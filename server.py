@@ -136,7 +136,7 @@ async def broadcast_client_list():
     Sends an updated list of connected clients and their assigned colors to all clients.
     """
     async with connected_clients_lock:
-        client_list = {str(client.remote_address): color for client, color in connected_clients.items()}
+        client_list = {i+1: color for i, color in enumerate(connected_clients.values())}
      
         for i, client in enumerate(connected_clients):
             try:

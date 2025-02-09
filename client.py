@@ -11,6 +11,9 @@ import pygame
 
 pygame.mixer.init()
 
+# SERVER = "wss://9708-2603-6080-65f0-2c0-4c00-32a5-cf6-6923.ngrok-free.app"
+SERVER = "ws://localhost:8765"
+
 # Load audio files
 countdown_audio_beep = 'countdown_beep.mp3'
 countdown_audio_go = 'countdown_go.mp3'
@@ -31,8 +34,6 @@ def play_gameplay_audio():
 def stop_audio():
     pygame.mixer.music.stop()
 
-
-SERVER = "ws://localhost:8765"
 brush_thickness = 25
 
 overlay_image = cv2.imread('splashh.png')
@@ -132,7 +133,7 @@ async def check_reset_gesture(lm_list):
     return False
 
 async def process_frame(img, websocket):
-    global xp, yp, img_canvas, DRAW_COLOR, game_active, game_reset, game_countdown, power_ups_available
+    global xp, yp, img_canvas, DRAW_COLOR, game_active, game_reset, game_countdown, power_ups_available, DRAW_COLOR_TEMP
     img = detector.findHands(img)
     lm_list, _ = detector.findPosition(img, draw=False)
 
@@ -160,8 +161,11 @@ async def process_frame(img, websocket):
             if xp == 0 and yp == 0:
                 xp, yp = x1, y1
 
-            # Draw on the local canvas
-            # cv2.line(img_canvas, (xp, yp), (x1, y1), DRAW_COLOR, brush_thickness)
+            # Draw on the shared canvas
+            if DRAW_COLOR_TEMP:
+                cv2.line(img_canvas, (xp, yp), (x1, y1), DRAW_COLOR_TEMP, brush_thickness)
+            else:
+                cv2.line(img_canvas, (xp, yp), (x1, y1), DRAW_COLOR, brush_thickness)
 
             # Send drawing data to the server
             await send_draw_data(websocket, xp, yp, x1, y1, power_up_id, client_id)
@@ -225,7 +229,7 @@ async def main_client():
 
                             i = 40
                             for client, color in connected_clients.items():
-                                if client == self_id:
+                                if str(client) == str(self_id):
                                     text = f"Connected - YOU: Color {DRAW_COLOR}"
                                     cv2.putText(img_canvas, text, (650, 85), cv2.FONT_HERSHEY_SIMPLEX, 1, DRAW_COLOR, 2)
                                 else:
@@ -312,8 +316,8 @@ async def main_client():
                             thickness = data["brush_thickness"]
 
                             # Draw on the shared canvas
-                            if DRAW_COLOR_TEMP:
-                                cv2.line(img_canvas, (x1, y1), (x2, y2), DRAW_COLOR_TEMP, thickness)
+                            if client_id == self_id:
+                                pass
                             else:
                                 cv2.line(img_canvas, (x1, y1), (x2, y2), color, thickness)
 
