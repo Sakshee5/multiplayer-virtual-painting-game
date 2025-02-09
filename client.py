@@ -11,8 +11,8 @@ import pygame
 
 pygame.mixer.init()
 
-SERVER = "wss://0c41-2603-6080-65f0-2c0-4c00-32a5-cf6-6923.ngrok-free.app"
-# SERVER = "ws://localhost:8765"
+# SERVER = "wss://0c41-2603-6080-65f0-2c0-4c00-32a5-cf6-6923.ngrok-free.app"
+SERVER = "ws://localhost:8765"
 
 # Load audio files
 countdown_audio_beep = 'countdown_beep.mp3'
@@ -138,6 +138,7 @@ async def process_frame(img, websocket):
     lm_list, _ = detector.findPosition(img, draw=False)
 
     if not game_active and not game_reset and not game_countdown:
+        power_ups_available = []
         # Show start button
         cv2.rectangle(img, (340, 300), (540, 400), (255, 255, 255), cv2.FILLED)
         cv2.putText(img, "START", (350, 370), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 3)
@@ -195,16 +196,19 @@ async def apply_devil_face():
 async def apply_paint_brush():
     global brush_thickness
     old_brush_thickness = brush_thickness
-    brush_thickness += 15  # Increase brush thickness
+    brush_thickness += 20  # Increase brush thickness
     await asyncio.sleep(5)  # Effect lasts 5 seconds
     brush_thickness = old_brush_thickness  # Revert back to the original thickness
 
 # Function to handle the eraser effect
 async def apply_eraser():
-    global DRAW_COLOR_TEMP
+    global DRAW_COLOR_TEMP, brush_thickness
+    old_brush_thickness = brush_thickness
+    brush_thickness += 20
     DRAW_COLOR_TEMP = (0, 0, 0)
     await asyncio.sleep(5)  # Effect lasts 5 seconds
     DRAW_COLOR_TEMP = None  # Revert to the original color
+    brush_thickness = old_brush_thickness
 
 async def main_client():
     global img_canvas, DRAW_COLOR, self_id
