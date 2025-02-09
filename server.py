@@ -50,7 +50,7 @@ async def spawn_power_ups():
                 except websockets.exceptions.ConnectionClosedError:
                     await remove_client(client)
 
-        await asyncio.sleep(random.randint(10, 20))  # Spawn every 5-10 seconds
+        await asyncio.sleep(random.randint(15, 20))  # Spawn every 5-10 seconds
 
 async def handle_countdown():
     global color_pixel_perc, img_canvas, game_active
