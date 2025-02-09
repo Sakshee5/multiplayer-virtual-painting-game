@@ -92,3 +92,5 @@ Manages:
 - Create a UI for lobby management (e.g., joining/leaving games).
 - Implement scoring systems for better gamification.
 - Deploy the WebSocket server to cloud-based platforms for wider accessibility.
+- Suite of Games Based on Virtual Drawing. For instance, a virtual Pictionary game.
+- Explore integrations with platforms like Zoom or Microsoft Teams. Splashh could be used as a fun and engaging icebreaker for virtual meetings, energizing participants and encouraging collaboration before diving into business discussions.
