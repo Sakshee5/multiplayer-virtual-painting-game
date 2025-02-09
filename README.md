@@ -2,9 +2,10 @@
 
 Splashh is **Multiplayer Drawing Game** with real-time interactions powered by WebSockets, OpenCV, and Python. Players can join a game, use hand gestures to draw on a shared canvas, and compete to fill the most canvas area while utilizing various power-ups.
 
+Gameplay Snippet
 ![Gameplay Snippet](video_snippet.gif)
 
-![Video Walkthrough](add_link)
+[Complete Video Walkthrough](https://youtu.be/SlA19znMufY?si=TuDvYnA9aIcu4sZw)
 
 
 ## Table of Contents
