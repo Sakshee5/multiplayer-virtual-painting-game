@@ -7,6 +7,31 @@ import hand_tracker as ht
 import ast
 import random
 
+import pygame
+
+pygame.mixer.init()
+
+# Load audio files
+countdown_audio_beep = 'countdown_beep.mp3'
+countdown_audio_go = 'countdown_go.mp3'
+gameplay_audio = 'gameplay.mp3'  # Background music
+
+def play_countdown_audio_go():
+    pygame.mixer.music.load(countdown_audio_go)
+    pygame.mixer.music.play()
+
+def play_countdown_audio_beep():
+    pygame.mixer.music.load(countdown_audio_beep)
+    pygame.mixer.music.play()
+
+def play_gameplay_audio():
+    pygame.mixer.music.load(gameplay_audio)
+    pygame.mixer.music.play()
+
+def stop_audio():
+    pygame.mixer.music.stop()
+
+
 SERVER = "ws://localhost:8765"
 brush_thickness = 25
 
@@ -210,6 +235,11 @@ async def main_client():
                             
                         
                         if "type" in data and data["type"] == "countdown":
+                            if data['count'] == "GO":
+                                play_countdown_audio_go()
+                            else:
+                                play_countdown_audio_beep()
+
                             # Handle countdown display
                             game_active = False
                             game_countdown = True
@@ -219,6 +249,7 @@ async def main_client():
                             cv2.waitKey(100)  # Wait 100ms to ensure update
 
                         if "type" in data and data["type"] == "start":
+                            play_gameplay_audio()
                             img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Clear the canvas for countdown
                             game_active = True
                             game_reset = False
@@ -236,6 +267,7 @@ async def main_client():
                                 client_data[color] = 0
 
                         if "type" in data and data["type"] == "winner":
+                            stop_audio()
                             game_active = False
                             game_reset = True
                             winner = data["winner"]
