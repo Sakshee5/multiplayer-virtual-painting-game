@@ -7,8 +7,6 @@ Splashh is **Multiplayer Drawing Game** with real-time interactions powered by W
 ![Video Walkthrough](add_link)
 
 
----
-
 ## Table of Contents
 - [Features](#features)
 - [Requirements](#requirements)
@@ -21,7 +19,6 @@ Splashh is **Multiplayer Drawing Game** with real-time interactions powered by W
 - [Contributing](#contributing)
 - [License](#license)
 
----
 
 ## Features
 - **Real-Time Multiplayer Drawing**: Players can draw on a shared canvas via a webcam-based hand-tracking system.
@@ -30,7 +27,6 @@ Splashh is **Multiplayer Drawing Game** with real-time interactions powered by W
 - **Countdown Timer and Score Display**: Tracks the game duration and dynamically displays scores.
 - **Gesture-Based Controls**: Use hand gestures to start/reset the game.
 
----
 
 ## How to Run (for local use)
 
@@ -58,7 +54,6 @@ Note: For the hackathon, I am deploying the server on ngrok for temporary basis 
 - The index finger is used for drawing on the canvas.
 - Draw paths are broadcast to all connected players via the WebSocket server.
 
----
 
 ## Code Overview
 
@@ -76,7 +71,6 @@ Manages:
 - Power-up spawning logic and game events like start/reset/winner announcements.
 - Game timer and score tracking.
 
----
 
 ## Power-Ups
 ### List of Power-Ups
@@ -90,7 +84,6 @@ Manages:
 - Power-ups are spawned at random intervals and locations on the canvas.
 - Players collect them by interacting with their virtual hand near the power-up's position.
 
----
 
 ## Future Enhancements
 - Improve hand-tracking accuracy for complex gestures.
