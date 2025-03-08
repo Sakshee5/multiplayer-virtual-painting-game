@@ -11,8 +11,7 @@ import pygame
 
 pygame.mixer.init()
 
-# SERVER = "wss://0c41-2603-6080-65f0-2c0-4c00-32a5-cf6-6923.ngrok-free.app"
-SERVER = "ws://localhost:8765"
+SERVER = "wss://c6eb5fa2-5220-4b94-98c3-1090e48aaa3a-00-9zpw8zj0rka4.spock.replit.dev/"
 
 # Load audio files
 countdown_audio_beep = 'countdown_beep.mp3'
