@@ -3,7 +3,7 @@
 Splashh is **Multiplayer Drawing Game** with real-time interactions powered by WebSockets, OpenCV, and Python. Players can join a game, use hand gestures to draw on a shared canvas, and compete to fill the most canvas area while utilizing various power-ups.
 
 Gameplay Snippet
-![Gameplay Snippet](video_snippet.gif)
+![Gameplay Snippet](assets/video_snippet.gif)
 
 [Complete Video Walkthrough](https://youtu.be/SlA19znMufY?si=TuDvYnA9aIcu4sZw)
 
@@ -75,11 +75,11 @@ Manages:
 
 ## Power-Ups
 ### List of Power-Ups
-1. <img src="eraser.png" alt="Eraser Power-up" width="20">  **Eraser**: Temporarily (5 secs) allows the player to erase opponent drawings.
+1. <img src="assets/raser.png" alt="Eraser Power-up" width="20">  **Eraser**: Temporarily (5 secs) allows the player to erase opponent drawings.
 
-2.  <img src="devil_face.png" alt="Eraser Power-up" width="20"> **Devil Face**: Reduces the opponent's brush size for a limited time (5 secs).
-3.  <img src="paint_bucket.png" alt="Eraser Power-up" width="20"> **Paint Bucket**: Fills a random area on the canvas with the player's color.
-4.  <img src="paint_brush.png" alt="Eraser Power-up" width="20"> **Paint Brush**: Temporarily (5 secs) increases the player's brush size.
+2.  <img src="assets/devil_face.png" alt="Eraser Power-up" width="20"> **Devil Face**: Reduces the opponent's brush size for a limited time (5 secs).
+3.  <img src="assets/paint_bucket.png" alt="Eraser Power-up" width="20"> **Paint Bucket**: Fills a random area on the canvas with the player's color.
+4.  <img src="assets/paint_brush.png" alt="Eraser Power-up" width="20"> **Paint Brush**: Temporarily (5 secs) increases the player's brush size.
 
 ### Power-Up Spawning
 - Power-ups are spawned at random intervals and locations on the canvas.

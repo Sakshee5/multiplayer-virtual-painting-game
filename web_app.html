@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Color Battle - Virtual Drawing Game</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div class="username-modal" id="username-modal">
+    <div class="username-form">
+      <h2>Enter Your Username</h2>
+      <input type="text" id="username-input" placeholder="Your name" maxlength="15">
+      <button id="submit-username">Join Game</button>
+    </div>
+  </div>
+
+  <div class="header">
+    Color Battle - Virtual Drawing Game
+  </div>
+  <div class="container">
+    <div class="status">DRAW HERE</div>
+    <div class="game-info">Waiting for connection...</div>
+    <div class="video-container">
+      <video class="input_video"></video>
+      <canvas class="output_canvas"></canvas>
+      <canvas class="drawing_canvas"></canvas>
+      <div class="countdown" id="countdown"></div>
+      <div class="start-area" id="start-area">START</div>
+      <div class="reset-area" id="reset-area">RESET</div>
+      <div class="winner-announcement" id="winner-announcement"></div>
+      <div class="timer" id="timer">Time Left: 60s</div>
+      <div class="player-scores" id="player-scores"></div>
+      <div id="power-ups-container"></div>
+    </div>
+    <div class="splash"></div>
+  </div>
+
+  <!-- Audio elements -->
+  <audio id="beepSound" src="assets/countdown_beep.mp3" preload="auto"></audio>
+  <audio id="goSound" src="assets/countdown_go.mp3" preload="auto"></audio>
+  <audio id="gameplaySound" src="assets/gameplay.mp3" preload="auto" loop></audio>
+  <audio id="powerUpSound" src="assets/powerup.mp3" preload="auto"></audio>
+  <audio id="winnerSound" src="assets/winner.mp3" preload="auto"></audio>
+
+  <script defer src="client.js"></script>
+
+</body>
+</html>
