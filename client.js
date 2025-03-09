@@ -69,6 +69,29 @@ playerScoresElement.style.zIndex = '100';
 playerScoresElement.style.maxHeight = '200px';
 playerScoresElement.style.overflowY = 'auto';
 
+// Helper function to robustly parse a color string
+function parseColor(colorStr) {
+  // If string starts with '[' then JSON parse
+  if (colorStr.startsWith('[')) {
+    try {
+      return JSON.parse(colorStr);
+    } catch (e) {
+      return [0, 0, 0];
+    }
+  }
+  // If string starts with '(' then remove parentheses and split
+  if (colorStr.startsWith('(')) {
+    let trimmed = colorStr.slice(1, -1);
+    return trimmed.split(',').map(num => parseInt(num.trim()));
+  }
+  // Fallback: try JSON.parse
+  try {
+    return JSON.parse(colorStr);
+  } catch (e) {
+    return [0, 0, 0];
+  }
+}
+
 // Handle username submission
 submitUsernameButton.addEventListener('click', () => {
   username = usernameInput.value.trim();
@@ -269,27 +292,39 @@ function connectWebSocket() {
       
       // Winner announcement
       if (data.type === "winner") {
-        winnerSound.play();
-        gameplaySound.pause();
-        gameplaySound.currentTime = 0;
         gameActive = false;
         gameReset = true;
+        
+        // Play winner sound
+        winnerSound.play();
+        
+        // Pause gameplay sound
+        gameplaySound.pause();
+        gameplaySound.currentTime = 0;
+        
         const winner = data.winner;
         console.log("Winner is", winner);
         
         let winnerColor, winnerName;
-        
-        if (typeof winner === 'string' && winner.startsWith('[')) {
-          winnerColor = JSON.parse(winner);
-          winnerName = "Player";
-        } else if (typeof winner === 'object') {
-          winnerColor = Array.isArray(winner.color) ? winner.color : JSON.parse(winner.color);
+        if (typeof winner === 'object') {
+          if (Array.isArray(winner.color)) {
+            winnerColor = winner.color;
+          } else if (typeof winner.color === 'string') {
+            // Use helper function to parse color whether in [r,g,b] or (r, g, b) format
+            winnerColor = winner.color.startsWith('[') ? JSON.parse(winner.color) : parseColor(winner.color);
+          }
           winnerName = winner.username || "Player";
+        } else if (typeof winner === 'string') {
+          winnerColor = winner.startsWith('[') ? JSON.parse(winner) : parseColor(winner);
+          winnerName = "Player";
         }
         
+        // Display winner announcement
         winnerAnnouncementElement.textContent = `Winner: ${winnerName} (${winnerColor[0]}, ${winnerColor[1]}, ${winnerColor[2]})`;
         winnerAnnouncementElement.style.color = `rgb(${winnerColor[0]}, ${winnerColor[1]}, ${winnerColor[2]})`;
         winnerAnnouncementElement.style.display = "block";
+        
+        // Show reset area
         resetAreaElement.style.display = "flex";
         
         // Clear power-ups
@@ -682,7 +717,7 @@ hands.onResults((results) => {
     
     // Convert to flipped coordinate system for drawing
     canvasCtx.lineWidth = 0.5;
-    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,{color: 'rgba(255, 255, 255, 0.4)', lineWidth: 0.5});
+    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.4)', lineWidth: 0.5});
     drawLandmarks(canvasCtx, landmarks, {color: 'rgba(255, 255, 255, 0.5)', lineWidth: 0.5, radius: 2});
 
     // Get index finger position
@@ -703,7 +738,7 @@ hands.onResults((results) => {
         startAreaElement.style.backgroundColor = "transparent";
       }
       
-      // Check if in reset area
+      // Check if in reset area (only active when gameReset is true)
       if (gameReset && isInArea(x, y, 740, 300, 200, 100)) {
         resetAreaElement.style.backgroundColor = "rgba(255,0,0,0.3)";
         // On click effect - send reset command
@@ -777,16 +812,16 @@ camera.start();
 
 // Event listeners
 resetAreaElement.addEventListener('click', () => {
-    if (gameReset) {
-      websocket.send(JSON.stringify({ type: "reset" }));
-    }
-  });
-  
-  startAreaElement.addEventListener('click', () => {
-    if (!gameActive && !gameCountdown && !gameReset) {
-      websocket.send(JSON.stringify({ type: "start" }));
-    }
-  });
+  if (gameReset) {
+    websocket.send(JSON.stringify({ type: "reset" }));
+  }
+});
+
+startAreaElement.addEventListener('click', () => {
+  if (!gameActive && !gameCountdown && !gameReset) {
+    websocket.send(JSON.stringify({ type: "start" }));
+  }
+});
 
 // Handle window resize
 window.addEventListener('resize', () => {

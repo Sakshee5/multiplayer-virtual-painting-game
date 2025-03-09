@@ -10,7 +10,7 @@ connected_clients = {}  # Now will store {websocket: {"color": color, "username"
 draw_colors = [(0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
 color_pixel_perc = {str(color): 0 for color in draw_colors}
 img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Initialize the shared canvas
-game_duration = 60
+game_duration = 10
 game_active = False  # To track whether the game is active
 connected_clients_lock = asyncio.Lock()  # To manage client connections safely
 
@@ -66,7 +66,7 @@ async def handle_countdown():
                 try:
                     await client.send(json.dumps({"type": "countdown", "count": count}))
                 except websockets.exceptions.ConnectionClosedError:
-                    print(f"Client disconnected during countdown.")
+                    print("Client disconnected during countdown.")
                     await remove_client(client)
             await asyncio.sleep(1)  # Wait 1 second between countdowns
 
@@ -85,7 +85,7 @@ async def handle_start_game():
             try:
                 await client.send(json.dumps({"type": "start"}))
             except websockets.exceptions.ConnectionClosedError:
-                print(f"Client disconnected during game start.")
+                print("Client disconnected during game start.")
                 await remove_client(client)
 
 async def handle_reset_game():
@@ -100,7 +100,7 @@ async def handle_reset_game():
             try:
                 await client.send(json.dumps({"type": "reset"}))
             except websockets.exceptions.ConnectionClosedError:
-                print(f"Client disconnected during reset.")
+                print("Client disconnected during reset.")
                 await remove_client(client)
 
 async def game_timer():
@@ -130,9 +130,19 @@ async def game_timer():
         winner_color = max(color_pixel_perc, key=color_pixel_perc.get)
         print(f"Winner is color {winner_color} with {color_pixel_perc[winner_color]}% pixels!")
         
-        # Find client with winning color for username
-        winner_info = {"color": json.loads(winner_color if isinstance(winner_color, str) else str(winner_color))}
+        # Convert the winner_color (which may be a tuple string like "(0, 255, 0)") into a list
+        if isinstance(winner_color, str):
+            try:
+                winner_color_list = [int(x.strip()) for x in winner_color.strip("()").split(",")]
+            except Exception as e:
+                print("Error parsing winner color:", e)
+                winner_color_list = [0, 0, 0]
+        else:
+            winner_color_list = list(winner_color)
+            
+        winner_info = {"color": winner_color_list}
         
+        # Find client with winning color for username
         for client_info in connected_clients.values():
             if str(client_info["color"]) == winner_color:
                 winner_info["username"] = client_info.get("username", "Player")
@@ -149,9 +159,6 @@ async def game_timer():
         print("No winner determined.")
 
 async def broadcast_client_list():
-    """
-    Sends an updated list of connected clients and their assigned colors to all clients.
-    """
     async with connected_clients_lock:
         client_list = {}
         for i, (client, client_info) in enumerate(connected_clients.items()):
@@ -166,10 +173,10 @@ async def broadcast_client_list():
                 await client.send(json.dumps({
                     "type": "client_list",
                     "clients": client_list,
-                    "self_id": i+1  # Send each client their own identifier
+                    "self_id": i + 1  # Send each client their own identifier
                 }))
             except websockets.exceptions.ConnectionClosedError:
-                print(f"Client disconnected while sending client list.")
+                print("Client disconnected while sending client list.")
                 await remove_client(client)
 
 async def remove_client(client):
@@ -235,14 +242,9 @@ async def handler(websocket):
             # Drawing logic
             elif "x1" in data:  # Allow drawing only if game is active
                 if game_active:
-                    # Include client_id in the data for client differentiation
                     client_id = data.get("client_id")
-                    
-                    # If there's a power-up collection, process it
                     if "power_up_id" in data:
-                        pass  # Power-up processing is handled by the client
-                        
-                    # Broadcast drawing data to all clients
+                        pass
                     async with connected_clients_lock:
                         for client in connected_clients:
                             try:
