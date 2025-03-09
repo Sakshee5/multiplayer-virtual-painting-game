@@ -6,7 +6,7 @@ import random
 import itertools
 
 # Global variables
-connected_clients = {}
+connected_clients = {}  # Now will store {websocket: {"color": color, "username": username}}
 draw_colors = [(0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
 color_pixel_perc = {str(color): 0 for color in draw_colors}
 img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Initialize the shared canvas
@@ -21,10 +21,10 @@ def generate_power_up_id():
 
 # Constants for power-ups
 POWER_UPS = [
-    {"type": "eraser", "image": "eraser.png", "id": None},
-    {"type": "devil_face", "image": "devil_face.png", "id": None},
-    {"type": "paint_bucket", "image": "paint_bucket.png", "id": None},
-    {"type": "paint_brush", "image": "paint_brush.png", "id": None}
+    {"type": "eraser", "image": "assets/eraser.png", "id": None},
+    {"type": "devil_face", "image": "assets/devil_face.png", "id": None},
+    {"type": "paint_bucket", "image": "assets/paint_bucket.png", "id": None},
+    {"type": "paint_brush", "image": "assets/paint_brush.png", "id": None}
 ]
 
 async def spawn_power_ups():
@@ -50,19 +50,23 @@ async def spawn_power_ups():
                 except websockets.exceptions.ConnectionClosedError:
                     await remove_client(client)
 
-        await asyncio.sleep(random.randint(15, 20))  # Spawn every 5-10 seconds
+        await asyncio.sleep(random.randint(5, 10))  # Spawn every 5-10 seconds
 
 async def handle_countdown():
     global color_pixel_perc, img_canvas, game_active
     print("Game starting countdown!")
+    
+    # Ensure we're not sending duplicate countdowns
+    countdown_values = [3, 2, 1, "GO"]
+    
     async with connected_clients_lock:
         # Countdown logic
-        for count in [3, 2, 1, "GO"]:
+        for count in countdown_values:
             for client in connected_clients:
                 try:
                     await client.send(json.dumps({"type": "countdown", "count": count}))
                 except websockets.exceptions.ConnectionClosedError:
-                    print(f"Client disconnected during countdown.")
+                    print("Client disconnected during countdown.")
                     await remove_client(client)
             await asyncio.sleep(1)  # Wait 1 second between countdowns
 
@@ -73,7 +77,7 @@ async def handle_start_game():
     global color_pixel_perc, img_canvas, game_active
     print("Game started!")
     img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Reset canvas
-    color_pixel_perc = {str(color): 0 for color in color_pixel_perc}  # Reset scores
+    color_pixel_perc = {str(color): 0 for color in draw_colors}  # Reset scores
     game_active = True  # Mark game as active
 
     async with connected_clients_lock:
@@ -81,7 +85,7 @@ async def handle_start_game():
             try:
                 await client.send(json.dumps({"type": "start"}))
             except websockets.exceptions.ConnectionClosedError:
-                print(f"Client disconnected during game start.")
+                print("Client disconnected during game start.")
                 await remove_client(client)
 
 async def handle_reset_game():
@@ -96,7 +100,7 @@ async def handle_reset_game():
             try:
                 await client.send(json.dumps({"type": "reset"}))
             except websockets.exceptions.ConnectionClosedError:
-                print(f"Client disconnected during reset.")
+                print("Client disconnected during reset.")
                 await remove_client(client)
 
 async def game_timer():
@@ -120,42 +124,67 @@ async def game_timer():
 
     # End game logic
     game_active = False
-    winner_color = max(color_pixel_perc, key=color_pixel_perc.get)
-    print(f"Winner is color {winner_color} with {color_pixel_perc[winner_color]} pixels!")
-    async with connected_clients_lock:
-        for client in connected_clients:
+    
+    # Find winner based on color percentages
+    if color_pixel_perc:
+        winner_color = max(color_pixel_perc, key=color_pixel_perc.get)
+        print(f"Winner is color {winner_color} with {color_pixel_perc[winner_color]}% pixels!")
+        
+        # Convert the winner_color (which may be a tuple string like "(0, 255, 0)") into a list
+        if isinstance(winner_color, str):
             try:
-                await client.send(json.dumps({"type": "winner", "winner": winner_color}))
-            except websockets.exceptions.ConnectionClosedError:
-                print("Client disconnected during winner announcement.")
-                await remove_client(client)
-
+                winner_color_list = [int(x.strip()) for x in winner_color.strip("()").split(",")]
+            except Exception as e:
+                print("Error parsing winner color:", e)
+                winner_color_list = [0, 0, 0]
+        else:
+            winner_color_list = list(winner_color)
+            
+        winner_info = {"color": winner_color_list}
+        
+        # Find client with winning color for username
+        for client_info in connected_clients.values():
+            if str(client_info["color"]) == winner_color:
+                winner_info["username"] = client_info.get("username", "Player")
+                break
+        
+        async with connected_clients_lock:
+            for client in connected_clients:
+                try:
+                    await client.send(json.dumps({"type": "winner", "winner": winner_info}))
+                except websockets.exceptions.ConnectionClosedError:
+                    print("Client disconnected during winner announcement.")
+                    await remove_client(client)
+    else:
+        print("No winner determined.")
 
 async def broadcast_client_list():
-    """
-    Sends an updated list of connected clients and their assigned colors to all clients.
-    """
     async with connected_clients_lock:
-        client_list = {i+1: color for i, color in enumerate(connected_clients.values())}
+        client_list = {}
+        for i, (client, client_info) in enumerate(connected_clients.items()):
+            client_id = i + 1
+            client_list[client_id] = {
+                "color": client_info["color"],
+                "username": client_info.get("username", f"Player {client_id}")
+            }
      
         for i, client in enumerate(connected_clients):
             try:
                 await client.send(json.dumps({
                     "type": "client_list",
                     "clients": client_list,
-                    "self_id": i+1  # Send each client their own identifier
+                    "self_id": i + 1  # Send each client their own identifier
                 }))
             except websockets.exceptions.ConnectionClosedError:
-                print(f"Client disconnected while sending client list.")
+                print("Client disconnected while sending client list.")
                 await remove_client(client)
-
 
 async def remove_client(client):
     """
     Remove a disconnected client from the connected clients list.
     """
     if client in connected_clients:
-        print(f"Removing client {connected_clients[client]}")
+        print(f"Removing client {connected_clients[client]['color']}")
         del connected_clients[client]
 
 async def handler(websocket):
@@ -163,14 +192,21 @@ async def handler(websocket):
     Handle incoming client connections and manage their interactions.
     """
     global connected_clients, color_pixel_perc
+    
+    # Initial client setup with color assignment
     async with connected_clients_lock:
         if len(connected_clients) < len(draw_colors):
             assigned_color = draw_colors[len(connected_clients)]
         else:
             assigned_color = draw_colors[len(connected_clients) % len(draw_colors)]
 
-        await websocket.send([str(assigned_color)])
-        connected_clients[websocket] = str(assigned_color)
+        connected_clients[websocket] = {
+            "color": assigned_color,
+            "username": f"Player {len(connected_clients) + 1}"  # Default username
+        }
+        
+        # Send initial color assignment to the client
+        await websocket.send(json.dumps(assigned_color))
 
     await broadcast_client_list()
 
@@ -178,8 +214,14 @@ async def handler(websocket):
         async for message in websocket:
             data = json.loads(message)
 
+            # Username update
+            if data.get("type") == "username":
+                async with connected_clients_lock:
+                    connected_clients[websocket]["username"] = data.get("username", f"Player {len(connected_clients)}")
+                await broadcast_client_list()
+
             # Start game signal
-            if data.get("type") == "start":
+            elif data.get("type") == "start":
                 await handle_countdown()
                 asyncio.create_task(game_timer())
                 await handle_start_game()
@@ -189,23 +231,33 @@ async def handler(websocket):
             elif data.get("type") == "reset":
                 await handle_reset_game()
 
+            # Pixel percentage update
+            elif data.get("type") == "pixel_update":
+                color = data.get("color")
+                pixel_perc = data.get("pixel_perc")
+                if color and pixel_perc is not None:
+                    color_str = str(tuple(color)) if isinstance(color, list) else str(color)
+                    color_pixel_perc[color_str] = pixel_perc
+
             # Drawing logic
             elif "x1" in data:  # Allow drawing only if game is active
                 if game_active:
-                    color = tuple(data["color"])
-                    pixel_perc = data["pixel_perc"]
-                    color_pixel_perc[str(color)] = pixel_perc
-
+                    client_id = data.get("client_id")
+                    if "power_up_id" in data:
+                        pass
                     async with connected_clients_lock:
                         for client in connected_clients:
-                            # if client != websocket:
-                            await client.send(json.dumps(data))
+                            try:
+                                await client.send(json.dumps(data))
+                            except websockets.exceptions.ConnectionClosedError:
+                                await remove_client(client)
 
     except websockets.exceptions.ConnectionClosedError:
         print("Client disconnected unexpectedly.")
     finally:
         async with connected_clients_lock:
             await remove_client(websocket)
+        await broadcast_client_list()
 
 async def main():
     print("Starting server at ws://localhost:8765")
