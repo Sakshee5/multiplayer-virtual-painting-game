@@ -43,6 +43,7 @@ let xp = 0;
 let yp = 0;
 let brushThickness = 25;
 let isDrawing = false;
+let isErasing = false;
 
 // Power-ups
 let powerUpsAvailable = [];
@@ -55,6 +56,18 @@ let clientData = {};
 const SERVER = "ws://localhost:8765";
 let websocket = null;
 let countdownActive = false;
+
+// Position playerScoresElement
+playerScoresElement.style.position = 'absolute';
+playerScoresElement.style.bottom = '10px';
+playerScoresElement.style.right = '10px';
+playerScoresElement.style.backgroundColor = 'rgba(0,0,0,0.7)';
+playerScoresElement.style.color = 'white';
+playerScoresElement.style.padding = '10px';
+playerScoresElement.style.borderRadius = '5px';
+playerScoresElement.style.zIndex = '100';
+playerScoresElement.style.maxHeight = '200px';
+playerScoresElement.style.overflowY = 'auto';
 
 // Handle username submission
 submitUsernameButton.addEventListener('click', () => {
@@ -121,6 +134,23 @@ function connectWebSocket() {
         if (!gameActive && !gameCountdown && !gameReset) {
           const connectedClients = data.clients;
           selfId = data.self_id;
+          clientData = {}; // Clear client data
+          
+          // Update clientData based on client list
+          for (const [clientId, clientInfo] of Object.entries(connectedClients)) {
+            if (clientInfo.color) {
+              let colorKey;
+              if (Array.isArray(clientInfo.color)) {
+                colorKey = `${clientInfo.color[0]},${clientInfo.color[1]},${clientInfo.color[2]}`;
+              } else if (typeof clientInfo.color === 'string' && clientInfo.color.startsWith('[')) {
+                const colorArray = JSON.parse(clientInfo.color);
+                colorKey = `${colorArray[0]},${colorArray[1]},${colorArray[2]}`;
+              } else {
+                colorKey = clientInfo.color.toString();
+              }
+              clientData[colorKey] = clientData[colorKey] || 0;
+            }
+          }
           
           clearDrawingCanvas();
           let i = 40;
@@ -140,6 +170,7 @@ function connectWebSocket() {
               i += 40;
             }
           }
+          updateScores();
         }
       }
       
@@ -184,10 +215,20 @@ function connectWebSocket() {
         countdownElement.style.display = "none";
         startAreaElement.style.display = "none";
         timerElement.style.display = "block";
+        resetAreaElement.style.display = "none";
+        winnerAnnouncementElement.style.display = "none";
+        
+        // Reset all power-up effects
+        isErasing = false;
+        DRAW_COLOR_TEMP = null;
+        brushThickness = 25;
         
         // Clear all power-ups
         powerUpsAvailable = [];
         updatePowerUpDisplay();
+        
+        // Initialize scores to zero for all clients
+        updateScores();
       }
       
       // Power-up spawn
@@ -208,11 +249,16 @@ function connectWebSocket() {
         timerElement.style.display = "none";
         winnerAnnouncementElement.style.display = "none";
         
+        // Reset all power-up effects
+        isErasing = false;
+        DRAW_COLOR_TEMP = null;
+        brushThickness = 25;
+        
         // Clear power-ups
         powerUpsAvailable = [];
         updatePowerUpDisplay();
         
-        // Reset client data
+        // Clear client data
         clientData = {};
         updateScores();
         
@@ -237,7 +283,7 @@ function connectWebSocket() {
           winnerColor = JSON.parse(winner);
           winnerName = "Player";
         } else if (typeof winner === 'object') {
-          winnerColor = winner.color;
+          winnerColor = Array.isArray(winner.color) ? winner.color : JSON.parse(winner.color);
           winnerName = winner.username || "Player";
         }
         
@@ -259,6 +305,11 @@ function connectWebSocket() {
         // Update scores regularly
         if (gameActive) {
           updateScores();
+        }
+        
+        // Game has ended when timer reaches 0
+        if (timeLeft === 0) {
+          gameActive = false;
         }
       }
       
@@ -310,8 +361,9 @@ function connectWebSocket() {
           }
         }
         
-        // Draw on canvas if it's not our own drawing (we'll handle our own drawing separately)
-        if (client_id !== selfId) {
+        // Draw on canvas if game is active and it's not our own drawing
+        // (we'll handle our own drawing separately)
+        if (client_id !== selfId && gameActive) {
           drawingCtx.beginPath();
           drawingCtx.moveTo(x1, y1);
           drawingCtx.lineTo(x2, y2);
@@ -388,6 +440,11 @@ function drawText(context, text, x, y, color, fontSize) {
 
 // Update scores display
 function updateScores() {
+  if (!clientData || Object.keys(clientData).length === 0) {
+    playerScoresElement.innerHTML = "<strong>Player Scores:</strong><br>No scores yet";
+    return;
+  }
+  
   let scoresHTML = "<strong>Player Scores:</strong><br>";
   
   // Sort client data by percentage (descending)
@@ -418,6 +475,7 @@ function updateScores() {
   }
   
   playerScoresElement.innerHTML = scoresHTML;
+  playerScoresElement.style.display = 'block';
 }
 
 // Update and send pixel percentage
@@ -432,6 +490,11 @@ async function updateAndSendPixelPercentage() {
     pixel_perc: percentage,
     client_id: selfId
   }));
+  
+  // Update local data too
+  const colorKey = `${DRAW_COLOR[0]},${DRAW_COLOR[1]},${DRAW_COLOR[2]}`;
+  clientData[colorKey] = percentage;
+  updateScores();
 }
 
 // Function to check if index finger is up and others are down
@@ -567,16 +630,18 @@ function applyPaintBrush() {
 
 // Apply eraser power-up effect
 function applyEraser() {
-  // Store original color
-  DRAW_COLOR_TEMP = [255, 255, 255]; // White for eraser
+  // Enable erasing mode
+  isErasing = true;
+  brushThickness = 40; // Larger brush for erasing
   
-  // Reset to original color after 5 seconds
+  // Reset to normal brush after 5 seconds
   setTimeout(() => {
-    DRAW_COLOR_TEMP = null;
+    isErasing = false;
+    brushThickness = 25;
   }, 5000);
 }
 
-// Apply paint brush power-up effect
+// Apply devil face power-up effect (broken brush)
 function applyDevilFace() {
   brushThickness = 1; // Broken brush
   
@@ -660,15 +725,27 @@ hands.onResults((results) => {
         const powerUpId = checkPowerUpCollection(x, y);
         
         // Continue drawing
-        drawingCtx.beginPath();
-        drawingCtx.moveTo(xp, yp);
-        drawingCtx.lineTo(x, y);
-        drawingCtx.strokeStyle = DRAW_COLOR_TEMP 
-          ? `rgb(${DRAW_COLOR_TEMP[0]}, ${DRAW_COLOR_TEMP[1]}, ${DRAW_COLOR_TEMP[2]})` 
-          : `rgb(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
-        drawingCtx.lineWidth = brushThickness;
-        drawingCtx.lineCap = 'round';
-        drawingCtx.stroke();
+        if (isErasing) {
+          // Eraser functionality - use destination-out compositing operation
+          drawingCtx.globalCompositeOperation = 'destination-out';
+          drawingCtx.beginPath();
+          drawingCtx.moveTo(xp, yp);
+          drawingCtx.lineTo(x, y);
+          drawingCtx.strokeStyle = 'rgba(255,255,255,1)';
+          drawingCtx.lineWidth = brushThickness;
+          drawingCtx.lineCap = 'round';
+          drawingCtx.stroke();
+          drawingCtx.globalCompositeOperation = 'source-over';
+        } else {
+          // Normal drawing
+          drawingCtx.beginPath();
+          drawingCtx.moveTo(xp, yp);
+          drawingCtx.lineTo(x, y);
+          drawingCtx.strokeStyle = `rgb(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
+          drawingCtx.lineWidth = brushThickness;
+          drawingCtx.lineCap = 'round';
+          drawingCtx.stroke();
+        }
         
         // Send drawing data to server
         sendDrawData(xp, yp, x, y, powerUpId);
@@ -700,16 +777,16 @@ camera.start();
 
 // Event listeners
 resetAreaElement.addEventListener('click', () => {
-  if (gameReset) {
-    websocket.send(JSON.stringify({ type: "reset" }));
-  }
-});
-
-startAreaElement.addEventListener('click', () => {
-  if (!gameActive && !gameCountdown && !gameReset) {
-    websocket.send(JSON.stringify({ type: "start" }));
-  }
-});
+    if (gameReset) {
+      websocket.send(JSON.stringify({ type: "reset" }));
+    }
+  });
+  
+  startAreaElement.addEventListener('click', () => {
+    if (!gameActive && !gameCountdown && !gameReset) {
+      websocket.send(JSON.stringify({ type: "start" }));
+    }
+  });
 
 // Handle window resize
 window.addEventListener('resize', () => {
