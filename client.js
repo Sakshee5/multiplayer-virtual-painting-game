@@ -424,42 +424,29 @@ function connectWebSocket() {
 
 // Function to update power-up display
 function updatePowerUpDisplay() {
-  // Clear existing power-up elements
-  powerUpsContainer.innerHTML = '';
+    // Clear existing power-up elements
+    powerUpsContainer.innerHTML = '';
   
-  // Create elements for each power-up
-  powerUpsAvailable.forEach(powerUp => {
-    const powerUpElement = document.createElement('div');
-    powerUpElement.className = 'power-up';
-    powerUpElement.style.left = `${powerUp.x}px`;
-    powerUpElement.style.top = `${powerUp.y}px`;
+    // Create elements for each power-up
+    powerUpsAvailable.forEach(powerUp => {
+      const powerUpElement = document.createElement('div');
+      powerUpElement.className = 'power-up';
+      powerUpElement.style.position = 'absolute';
+      powerUpElement.style.left = `${powerUp.x}px`;
+      powerUpElement.style.top = `${powerUp.y}px`;
     
-    // Add different colors/icons based on power-up type
-    switch(powerUp.type) {
-      case 'eraser':
-        powerUpElement.textContent = 'E';
-        powerUpElement.style.backgroundColor = 'white';
-        powerUpElement.style.color = 'black';
-        break;
-      case 'devil_face':
-        powerUpElement.textContent = 'D';
-        powerUpElement.style.backgroundColor = 'red';
-        break;
-      case 'paint_bucket':
-        powerUpElement.textContent = 'B';
-        powerUpElement.style.backgroundColor = 'blue';
-        break;
-      case 'paint_brush':
-        powerUpElement.textContent = 'P';
-        powerUpElement.style.backgroundColor = 'green';
-        break;
-      default:
-        powerUpElement.textContent = '?';
-    }
-    
-    powerUpsContainer.appendChild(powerUpElement);
-  });
-}
+      // Instead of text, create an image element
+      const img = document.createElement('img');
+      // Ensure the image path is correct relative to your HTML file.
+      img.src = powerUp.image; // e.g., "eraser.png", "devil_face.png", etc.
+      img.style.width = '30px';  // Adjust size as needed
+      img.style.height = '30px';
+      
+      // Append the image to the power-up element
+      powerUpElement.appendChild(img);
+      powerUpsContainer.appendChild(powerUpElement);
+    });
+  }
 
 // Function to clear the drawing canvas
 function clearDrawingCanvas() {
@@ -703,13 +690,13 @@ hands.setOptions({
 // Process hand landmarks for drawing
 hands.onResults((results) => {
   // Draw camera feed
-  canvasCtx.save();
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   
   // Draw the camera feed with mirrored view consistently
-  canvasCtx.translate(canvasElement.width, 0);
-  canvasCtx.scale(-1, 1);
-  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    canvasCtx.translate(canvasElement.width, 0);
+    canvasCtx.scale(-1, 1);
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
   // Process hands
   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
@@ -749,13 +736,13 @@ hands.onResults((results) => {
     }
     
     // Handle index finger for drawing
-    if (isIndexFingerUp(landmarks) && gameActive) {
-      if (!isDrawing) {
+        if (isIndexFingerUp(landmarks) && gameActive) {
+          if (!isDrawing) {
         // Start drawing
-        isDrawing = true;
-        xp = x;
-        yp = y;
-      } else {
+            isDrawing = true;
+            xp = x;
+            yp = y;
+          } else {
         // Check for power-up collection
         const powerUpId = checkPowerUpCollection(x, y);
         
@@ -773,30 +760,30 @@ hands.onResults((results) => {
           drawingCtx.globalCompositeOperation = 'source-over';
         } else {
           // Normal drawing
-          drawingCtx.beginPath();
-          drawingCtx.moveTo(xp, yp);
-          drawingCtx.lineTo(x, y);
-          drawingCtx.strokeStyle = `rgb(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
-          drawingCtx.lineWidth = brushThickness;
-          drawingCtx.lineCap = 'round';
-          drawingCtx.stroke();
+            drawingCtx.beginPath();
+            drawingCtx.moveTo(xp, yp);
+            drawingCtx.lineTo(x, y);
+            drawingCtx.strokeStyle = `rgb(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
+            drawingCtx.lineWidth = brushThickness;
+            drawingCtx.lineCap = 'round';
+            drawingCtx.stroke();
         }
         
         // Send drawing data to server
         sendDrawData(xp, yp, x, y, powerUpId);
-        
+  
         // Update position
-        xp = x;
-        yp = y;
-      }
-    } else {
-      isDrawing = false;
-    }
+            xp = x;
+            yp = y;
+          }
+        } else {
+          isDrawing = false;
+        }
   } else {
     isDrawing = false;
-  }
+    }
   
-  canvasCtx.restore();
+    canvasCtx.restore();
 });
 
 // Initialize camera
