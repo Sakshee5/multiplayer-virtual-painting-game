@@ -206,13 +206,15 @@ async def websocket_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
-    # Initial client setup with color assignment
+    # Check if server is full before adding client
     async with connected_clients_lock:
-        if len(connected_clients) < len(draw_colors):
-            assigned_color = draw_colors[len(connected_clients)]
-        else:
-            assigned_color = draw_colors[len(connected_clients) % len(draw_colors)]
+        if len(connected_clients) >= len(draw_colors):
+            await ws.send_json({"type": "error", "message": "Server is full. Maximum 5 players allowed."})
+            await ws.close()
+            return ws
 
+        # Initial client setup with color assignment
+        assigned_color = draw_colors[len(connected_clients)]
         connected_clients[ws] = {
             "color": assigned_color,
             "username": f"Player {len(connected_clients) + 1}"  # Default username
