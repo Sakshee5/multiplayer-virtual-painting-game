@@ -271,6 +271,16 @@ async def websocket_handler(request):
                                 except Exception:
                                     await remove_client(client)
 
+                # Paint bucket action
+                elif data.get("type") == "paint_bucket":
+                    if game_active:
+                        async with connected_clients_lock:
+                            for client in connected_clients:
+                                try:
+                                    await client.send_json(data)
+                                except Exception:
+                                    await remove_client(client)
+
     except Exception as e:
         print(f"Error in websocket handler: {e}")
     finally:

@@ -366,7 +366,7 @@ function connectWebSocket() {
 
       // Drawing data received
       if (data.hasOwnProperty('x1')) {
-        const { x1, y1, x2, y2, color, brush_thickness, pixel_perc, power_up_id, client_id } = data;
+        const { x1, y1, x2, y2, color, brush_thickness, pixel_perc, power_up_id, client_id, is_eraser } = data;
 
         // Handle power-up collection
         if (power_up_id) {
@@ -383,15 +383,7 @@ function connectWebSocket() {
 
               if (client_id === selfId) {
                 if (powerUpType === "paint_bucket") {
-                  const x = Math.floor(Math.random() * 1160) + 50;
-                  const y = Math.floor(Math.random() * 400) + 50;
-                  drawingCtx.beginPath();
-                  drawingCtx.arc(x, y, 100, 0, 2 * Math.PI);
-                  drawingCtx.fillStyle = `rgb(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
-                  drawingCtx.fill();
-
-                  // Send area update
-                  setTimeout(() => updateAndSendPixelPercentage(), 100);
+                  applyPaintBucket();
                 }
 
                 if (powerUpType === "paint_brush") {
@@ -412,16 +404,29 @@ function connectWebSocket() {
           }
         }
 
-        // Draw on canvas if game is active and it's not our own drawing
-        // (we'll handle our own drawing separately)
+        // Draw on canvas if it's not our own drawing
         if (client_id !== selfId && gameActive) {
-          drawingCtx.beginPath();
-          drawingCtx.moveTo(x1, y1);
-          drawingCtx.lineTo(x2, y2);
-          drawingCtx.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-          drawingCtx.lineWidth = brush_thickness;
-          drawingCtx.lineCap = 'round';
-          drawingCtx.stroke();
+          if (is_eraser) {
+            // Handle eraser drawing
+            drawingCtx.globalCompositeOperation = 'destination-out';
+            drawingCtx.beginPath();
+            drawingCtx.moveTo(x1, y1);
+            drawingCtx.lineTo(x2, y2);
+            drawingCtx.strokeStyle = 'rgba(255,255,255,1)';
+            drawingCtx.lineWidth = brush_thickness;
+            drawingCtx.lineCap = 'round';
+            drawingCtx.stroke();
+            drawingCtx.globalCompositeOperation = 'source-over';
+          } else {
+            // Handle normal drawing
+            drawingCtx.beginPath();
+            drawingCtx.moveTo(x1, y1);
+            drawingCtx.lineTo(x2, y2);
+            drawingCtx.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+            drawingCtx.lineWidth = brush_thickness;
+            drawingCtx.lineCap = 'round';
+            drawingCtx.stroke();
+          }
         }
 
         // Update client data for score display
@@ -430,6 +435,11 @@ function connectWebSocket() {
           clientData[colorKey] = pixel_perc;
           updateScores();
         }
+      }
+
+      // Handle paint bucket action from other clients
+      if (data.type === "paint_bucket" && data.client_id !== selfId) {
+        drawPaintBucket(data.x, data.y, data.color);
       }
 
     } catch (error) {
@@ -650,7 +660,8 @@ async function sendDrawData(x1, y1, x2, y2, powerUpId) {
     y2: y2,
     color: colorToSend,
     brush_thickness: brushThickness,
-    client_id: selfId
+    client_id: selfId,
+    is_eraser: isErasing  // Add eraser flag
   };
 
   // Add power-up ID if collecting one
@@ -665,6 +676,32 @@ async function sendDrawData(x1, y1, x2, y2, powerUpId) {
     data.lastUpdate = Date.now();
     updateAndSendPixelPercentage();
   }
+}
+
+// Apply paint bucket power-up effect
+function applyPaintBucket() {
+  const x = Math.floor(Math.random() * 1160) + 50;
+  const y = Math.floor(Math.random() * 400) + 50;
+  
+  // Send paint bucket action to server
+  websocket.send(JSON.stringify({
+    type: "paint_bucket",
+    x: x,
+    y: y,
+    color: DRAW_COLOR,
+    client_id: selfId
+  }));
+
+  // Draw locally
+  drawPaintBucket(x, y, DRAW_COLOR);
+}
+
+// Function to draw paint bucket effect
+function drawPaintBucket(x, y, color) {
+  drawingCtx.beginPath();
+  drawingCtx.arc(x, y, 100, 0, 2 * Math.PI);
+  drawingCtx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+  drawingCtx.fill();
 }
 
 // Apply paint brush power-up effect
