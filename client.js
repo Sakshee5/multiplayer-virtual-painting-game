@@ -58,7 +58,16 @@ let activePowerUpElements = [];
 let clientData = {};
 
 // WebSocket connection
-const SERVER = "ws://localhost:8765";
+const getWebSocketUrl = () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // If running locally, use localhost, otherwise use the Replit URL
+    if (window.location.hostname === 'localhost') {
+        return `${protocol}//localhost:8080`;
+    } else {
+        return `${protocol}//${window.location.hostname}`;
+    }
+};
+
 let websocket = null;
 let countdownActive = false;
 
@@ -110,7 +119,7 @@ submitUsernameButton.addEventListener('click', () => {
 
 // Connect to WebSocket server
 function connectWebSocket() {
-  websocket = new WebSocket(SERVER);
+  websocket = new WebSocket(getWebSocketUrl());
   
   websocket.onopen = () => {
     console.log("Connected to server");

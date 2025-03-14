@@ -4,6 +4,7 @@ import json
 import numpy as np
 import random
 import itertools
+import os
 
 # Global variables
 connected_clients = {}  # Now will store {websocket: {"color": color, "username": username}}
@@ -260,9 +261,12 @@ async def handler(websocket):
         await broadcast_client_list()
 
 async def main():
-    print("Starting server at ws://localhost:8765")
-    async with websockets.serve(handler, "localhost", 8765):
-        await asyncio.Future()  # Keeps the server running indefinitely
+    host = "0.0.0.0"  # Listen on all available interfaces
+    port = int(os.environ.get("PORT", 8080))  # Use PORT environment variable or default to 8080
+    
+    print(f"Server starting on {host}:{port}")
+    async with websockets.serve(handler, host, port):
+        await asyncio.Future()  # run forever
 
 if __name__ == "__main__":
     asyncio.run(main())

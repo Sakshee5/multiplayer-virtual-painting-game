@@ -1,0 +1,11 @@
+run = "python server.py"
+entrypoint = "server.py"
+
+[nix]
+channel = "stable-22_11"
+
+[languages]
+python = "3.9"
+
+[env]
+PYTHONPATH = "${PYTHONPATH}:${HOME}/${REPL_SLUG}" 
