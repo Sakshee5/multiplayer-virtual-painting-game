@@ -62,9 +62,10 @@ const getWebSocketUrl = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     // If running locally, use localhost, otherwise use the Replit URL
     if (window.location.hostname === 'localhost') {
-        return `${protocol}//localhost:8080`;
+        return `${protocol}//localhost:8080/ws`;
     } else {
-        return `${protocol}//${window.location.hostname}`;
+        // For Replit, use the same hostname and add /ws path
+        return `${protocol}//${window.location.hostname}/ws`;
     }
 };
 
@@ -120,28 +121,28 @@ submitUsernameButton.addEventListener('click', () => {
 // Connect to WebSocket server
 function connectWebSocket() {
   websocket = new WebSocket(getWebSocketUrl());
-  
+
   websocket.onopen = () => {
     console.log("Connected to server");
     gameInfoElement.textContent = "Connected, waiting for color assignment...";
-    
+
     // Send username to server
     if (username) {
       websocket.send(JSON.stringify({ type: "username", username: username }));
     }
   };
-  
+
   websocket.onclose = (event) => {
     console.log("Disconnected from server:", event.code, event.reason);
     gameInfoElement.textContent = "Connection lost. Reconnecting...";
     setTimeout(connectWebSocket, 3000); // Try to reconnect after 3 seconds
   };
-  
+
   websocket.onerror = (error) => {
     console.error("WebSocket error:", error);
     gameInfoElement.textContent = "Connection error. Reconnecting...";
   };
-  
+
   websocket.onmessage = (event) => {
     try {
       // Try to parse as JSON first
@@ -157,7 +158,7 @@ function connectWebSocket() {
           return;
         }
       }
-      
+
       // First message - color assignment
       if (Array.isArray(data) && data.length === 3) {
         DRAW_COLOR = data;
@@ -165,14 +166,14 @@ function connectWebSocket() {
         gameInfoElement.textContent = `Your color: RGB(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
         return;
       }
-      
+
       // Client list update
       if (data.type === "client_list") {
         if (!gameActive && !gameCountdown && !gameReset) {
           const connectedClients = data.clients;
           selfId = data.self_id;
           clientData = {}; // Clear client data
-          
+
           // Update clientData based on client list
           for (const [clientId, clientInfo] of Object.entries(connectedClients)) {
             if (clientInfo.color) {
@@ -188,16 +189,16 @@ function connectWebSocket() {
               clientData[colorKey] = clientData[colorKey] || 0;
             }
           }
-          
+
           clearDrawingCanvas();
           let i = 40;
           for (const [clientId, clientInfo] of Object.entries(connectedClients)) {
             const clientColor = Array.isArray(clientInfo.color) 
               ? clientInfo.color 
               : JSON.parse(clientInfo.color);
-              
+
             const clientName = clientInfo.username || `Player ${clientId}`;
-            
+
             if (parseInt(clientId) === selfId) {
               const text = `Connected - YOU (${clientName}): Color (${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
               drawText(drawingCtx, text, 650, 85, `rgb(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`, 20);
@@ -210,7 +211,7 @@ function connectWebSocket() {
           updateScores();
         }
       }
-      
+
       // Countdown
       if (data.type === "countdown") {
         if (!countdownActive) {
@@ -218,16 +219,16 @@ function connectWebSocket() {
           gameActive = false;
           gameCountdown = true;
           const count = data.count;
-          
+
           if (count === "GO") {
             goSound.play();
           } else {
             beepSound.play();
           }
-          
+
           countdownElement.textContent = count;
           countdownElement.style.display = "block";
-          
+
           // Hide countdown after a short delay
           if (count === "GO") {
             setTimeout(() => {
@@ -241,7 +242,7 @@ function connectWebSocket() {
           }
         }
       }
-      
+
       // Game start
       if (data.type === "start") {
         gameplaySound.play();
@@ -254,26 +255,27 @@ function connectWebSocket() {
         timerElement.style.display = "block";
         resetAreaElement.style.display = "none";
         winnerAnnouncementElement.style.display = "none";
-        
+
         // Reset all power-up effects
         isErasing = false;
         DRAW_COLOR_TEMP = null;
         brushThickness = 25;
-        
+
         // Clear all power-ups
         powerUpsAvailable = [];
         updatePowerUpDisplay();
-        
+
         // Initialize scores to zero for all clients
         updateScores();
       }
-      
+
       // Power-up spawn
       if (data.type === "power_up_spawn") {
+        console.log("Power-up spawned:", data.power_up);  // Debug log
         powerUpsAvailable.push(data.power_up);
         updatePowerUpDisplay();
       }
-      
+
       // Game reset
       if (data.type === "reset") {
         gameActive = false;
@@ -285,40 +287,40 @@ function connectWebSocket() {
         startAreaElement.style.display = "flex";
         timerElement.style.display = "none";
         winnerAnnouncementElement.style.display = "none";
-        
+
         // Reset all power-up effects
         isErasing = false;
         DRAW_COLOR_TEMP = null;
         brushThickness = 25;
-        
+
         // Clear power-ups
         powerUpsAvailable = [];
         updatePowerUpDisplay();
-        
+
         // Clear client data
         clientData = {};
         updateScores();
-        
+
         // Stop music
         gameplaySound.pause();
         gameplaySound.currentTime = 0;
       }
-      
+
       // Winner announcement
       if (data.type === "winner") {
         gameActive = false;
         gameReset = true;
-        
+
         // Play winner sound
         winnerSound.play();
-        
+
         // Pause gameplay sound
         gameplaySound.pause();
         gameplaySound.currentTime = 0;
-        
+
         const winner = data.winner;
         console.log("Winner is", winner);
-        
+
         let winnerColor, winnerName;
         if (typeof winner === 'object') {
           if (Array.isArray(winner.color)) {
@@ -332,40 +334,40 @@ function connectWebSocket() {
           winnerColor = winner.startsWith('[') ? JSON.parse(winner) : parseColor(winner);
           winnerName = "Player";
         }
-        
+
         // Display winner announcement
         winnerAnnouncementElement.textContent = `Winner: ${winnerName} (${winnerColor[0]}, ${winnerColor[1]}, ${winnerColor[2]})`;
         winnerAnnouncementElement.style.color = `rgb(${winnerColor[0]}, ${winnerColor[1]}, ${winnerColor[2]})`;
         winnerAnnouncementElement.style.display = "block";
-        
+
         // Show reset area
         resetAreaElement.style.display = "flex";
-        
+
         // Clear power-ups
         powerUpsAvailable = [];
         updatePowerUpDisplay();
       }
-      
+
       // Timer update
       if (data.type === "timer") {
         const timeLeft = data.time_left;
         timerElement.textContent = `Time Left: ${timeLeft}s`;
-        
+
         // Update scores regularly
         if (gameActive) {
           updateScores();
         }
-        
+
         // Game has ended when timer reaches 0
         if (timeLeft === 0) {
           gameActive = false;
         }
       }
-      
+
       // Drawing data received
       if (data.hasOwnProperty('x1')) {
         const { x1, y1, x2, y2, color, brush_thickness, pixel_perc, power_up_id, client_id } = data;
-        
+
         // Handle power-up collection
         if (power_up_id) {
           for (let i = 0; i < powerUpsAvailable.length; i++) {
@@ -374,11 +376,11 @@ function connectWebSocket() {
               if (client_id === selfId) {
                 powerUpSound.play();
               }
-              
+
               const powerUpType = powerUpsAvailable[i].type;
               powerUpsAvailable.splice(i, 1);
               updatePowerUpDisplay();
-              
+
               if (client_id === selfId) {
                 if (powerUpType === "paint_bucket") {
                   const x = Math.floor(Math.random() * 1160) + 50;
@@ -387,29 +389,29 @@ function connectWebSocket() {
                   drawingCtx.arc(x, y, 100, 0, 2 * Math.PI);
                   drawingCtx.fillStyle = `rgb(${DRAW_COLOR[0]}, ${DRAW_COLOR[1]}, ${DRAW_COLOR[2]})`;
                   drawingCtx.fill();
-                  
+
                   // Send area update
                   setTimeout(() => updateAndSendPixelPercentage(), 100);
                 }
-                
+
                 if (powerUpType === "paint_brush") {
                   applyPaintBrush();
                 }
-                
+
                 if (powerUpType === "eraser") {
                   applyEraser();
                 }
-                
+
                 if (powerUpType === "devil_face") {
                   applyDevilFace();
                 }
               }
-              
+
               break;
             }
           }
         }
-        
+
         // Draw on canvas if game is active and it's not our own drawing
         // (we'll handle our own drawing separately)
         if (client_id !== selfId && gameActive) {
@@ -421,7 +423,7 @@ function connectWebSocket() {
           drawingCtx.lineCap = 'round';
           drawingCtx.stroke();
         }
-        
+
         // Update client data for score display
         if (pixel_perc !== undefined) {
           const colorKey = Array.isArray(color) ? `${color[0]},${color[1]},${color[2]}` : color;
@@ -429,7 +431,7 @@ function connectWebSocket() {
           updateScores();
         }
       }
-      
+
     } catch (error) {
       console.error("Error processing message:", error, event.data);
     }
@@ -440,7 +442,7 @@ function connectWebSocket() {
 function updatePowerUpDisplay() {
     // Clear existing power-up elements
     powerUpsContainer.innerHTML = '';
-  
+
     // Create elements for each power-up
     powerUpsAvailable.forEach(powerUp => {
       const powerUpElement = document.createElement('div');
@@ -448,14 +450,14 @@ function updatePowerUpDisplay() {
       powerUpElement.style.position = 'absolute';
       powerUpElement.style.left = `${powerUp.x}px`;
       powerUpElement.style.top = `${powerUp.y}px`;
-    
+
       // Instead of text, create an image element
       const img = document.createElement('img');
       // Ensure the image path is correct relative to your HTML file.
       img.src = powerUp.image; // e.g., "eraser.png", "devil_face.png", etc.
       img.style.width = '30px';  // Adjust size as needed
       img.style.height = '30px';
-      
+
       // Append the image to the power-up element
       powerUpElement.appendChild(img);
       powerUpsContainer.appendChild(powerUpElement);
@@ -480,12 +482,12 @@ function updateScores() {
     playerScoresElement.innerHTML = "<strong>Player Scores:</strong><br>No scores yet";
     return;
   }
-  
+
   let scoresHTML = "<strong>Player Scores:</strong><br>";
-  
+
   // Sort client data by percentage (descending)
   const sortedEntries = Object.entries(clientData).sort((a, b) => b[1] - a[1]);
-  
+
   for (const [colorStr, percentage] of sortedEntries) {
     let color;
     if (colorStr.includes(',')) {
@@ -493,9 +495,9 @@ function updateScores() {
     } else {
       continue; // Skip invalid entries
     }
-    
+
     const colorCSS = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-    
+
     if (color[0] === DRAW_COLOR[0] && color[1] === DRAW_COLOR[1] && color[2] === DRAW_COLOR[2]) {
       scoresHTML += `<div style="color: ${colorCSS}; font-weight: bold; margin-bottom: 5px;">
                       YOU: ${percentage.toFixed(2)}%
@@ -509,7 +511,7 @@ function updateScores() {
                     </div>`;
     }
   }
-  
+
   playerScoresElement.innerHTML = scoresHTML;
   playerScoresElement.style.display = 'block';
 }
@@ -517,16 +519,16 @@ function updateScores() {
 // Update and send pixel percentage
 async function updateAndSendPixelPercentage() {
   if (!gameActive || !websocket || websocket.readyState !== WebSocket.OPEN) return;
-  
+
   const percentage = await getPixelPercent(DRAW_COLOR);
-  
+
   websocket.send(JSON.stringify({
     type: "pixel_update",
     color: DRAW_COLOR,
     pixel_perc: percentage,
     client_id: selfId
   }));
-  
+
   // Update local data too
   const colorKey = `${DRAW_COLOR[0]},${DRAW_COLOR[1]},${DRAW_COLOR[2]}`;
   clientData[colorKey] = percentage;
@@ -541,29 +543,29 @@ function isIndexFingerUp(landmarks) {
   const indexPIP = landmarks[6].y;
   const indexDIP = landmarks[7].y;
   const indexTip = landmarks[8].y;
-  
+
   const middleMCP = landmarks[9].y;
   const middleTip = landmarks[12].y;
-  
+
   const ringMCP = landmarks[13].y;
   const ringTip = landmarks[16].y;
-  
+
   const pinkyMCP = landmarks[17].y;
   const pinkyTip = landmarks[20].y;
-  
+
   const thumbTip = landmarks[4].y;
-  
+
   // Check if index finger is extended up
   const isIndexUp = indexTip < indexDIP && indexDIP < indexPIP && indexPIP < indexMCP;
-  
+
   // Check if other fingers are closed (tips below MCPs)
   const isMiddleClosed = middleTip > middleMCP;
   const isRingClosed = ringTip > ringMCP;
   const isPinkyClosed = pinkyTip > pinkyMCP;
-  
+
   // For thumb we just check if it's generally higher than the wrist
   const isThumbNotUp = thumbTip > wristY;
-  
+
   return isIndexUp && isMiddleClosed && isRingClosed && isPinkyClosed;
 }
 
@@ -572,22 +574,22 @@ function isTwoFingersUp(landmarks) {
   const indexMCP = landmarks[5].y;
   const indexPIP = landmarks[6].y;
   const indexTIP = landmarks[8].y;
-  
+
   const middleMCP = landmarks[9].y;
   const middlePIP = landmarks[10].y;
   const middleTIP = landmarks[12].y;
-  
+
   const ringTIP = landmarks[16].y;
   const pinkyTIP = landmarks[20].y;
-  
+
   // Check if index and middle fingers are up
   const isIndexUp = indexTIP < indexPIP && indexPIP < indexMCP;
   const isMiddleUp = middleTIP < middlePIP && middlePIP < middleMCP;
-  
+
   // Check if other fingers are down
   const isRingDown = ringTIP > landmarks[13].y;
   const isPinkyDown = pinkyTIP > landmarks[17].y;
-  
+
   return isIndexUp && isMiddleUp && isRingDown && isPinkyDown;
 }
 
@@ -600,7 +602,7 @@ function isInArea(x, y, areaX, areaY, areaWidth, areaHeight) {
 function scaleCoordinates(x, y) {
   // Flip x coordinate
   const scaledX = canvasElement.width - x * canvasElement.width;
-  
+
   const absoluteY = y * canvasElement.height;  // Get position in 720px space
 
   return { x: scaledX, y: absoluteY };
@@ -624,23 +626,23 @@ async function getPixelPercent(color) {
   const data = imageData.data;
   let matchingPixels = 0;
   const totalPixels = drawingCanvas.width * drawingCanvas.height;
-  
+
   for (let i = 0; i < data.length; i += 4) {
     if (data[i] === color[0] && data[i + 1] === color[1] && data[i + 2] === color[2] && data[i + 3] !== 0) {
       matchingPixels++;
     }
   }
-  
+
   return (matchingPixels / totalPixels) * 100;
 }
 
 // Send drawing data to server
 async function sendDrawData(x1, y1, x2, y2, powerUpId) {
   if (!websocket || websocket.readyState !== WebSocket.OPEN || !gameActive) return;
-  
+
   // Use temporary color if a power-up effect is active
   const colorToSend = DRAW_COLOR_TEMP || DRAW_COLOR;
-  
+
   const data = {
     x1: x1,
     y1: y1,
@@ -650,14 +652,14 @@ async function sendDrawData(x1, y1, x2, y2, powerUpId) {
     brush_thickness: brushThickness,
     client_id: selfId
   };
-  
+
   // Add power-up ID if collecting one
   if (powerUpId) {
     data.power_up_id = powerUpId;
   }
-  
+
   websocket.send(JSON.stringify(data));
-  
+
   // Update percentage if it's been more than 500ms since last update
   if (!data.lastUpdate || Date.now() - data.lastUpdate > 500) {
     data.lastUpdate = Date.now();
@@ -668,7 +670,7 @@ async function sendDrawData(x1, y1, x2, y2, powerUpId) {
 // Apply paint brush power-up effect
 function applyPaintBrush() {
   brushThickness = 60; // Larger brush
-  
+
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
     brushThickness = 25;
@@ -680,7 +682,7 @@ function applyEraser() {
   // Enable erasing mode
   isErasing = true;
   brushThickness = 40; // Larger brush for erasing
-  
+
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
     isErasing = false;
@@ -691,7 +693,7 @@ function applyEraser() {
 // Apply devil face power-up effect (broken brush)
 function applyDevilFace() {
   brushThickness = 1; // Broken brush
-  
+
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
     brushThickness = 25;
@@ -726,7 +728,7 @@ hands.onResults((results) => {
   // Process hands
   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
     const landmarks = results.multiHandLandmarks[0];
-    
+
     // Convert to flipped coordinate system for drawing
     canvasCtx.lineWidth = 0.5;
     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.4)', lineWidth: 0.5});
@@ -750,7 +752,7 @@ hands.onResults((results) => {
         } else {
           startAreaElement.style.backgroundColor = "transparent";
         }
-        
+
         // Check if in reset area (coordinates are in drawing canvas space)
         if (gameReset && isInArea(x, y, 740, 300, 200, 100)) {
           resetAreaElement.style.backgroundColor = "rgba(255,0,0,0.3)";
@@ -760,7 +762,7 @@ hands.onResults((results) => {
           resetAreaElement.style.backgroundColor = "transparent";
         }
       }
-      
+
       // Handle index finger for drawing
       if (isIndexFingerUp(landmarks) && gameActive) {
         if (!isDrawing) {
@@ -771,7 +773,7 @@ hands.onResults((results) => {
         } else {
           // Check for power-up collection
           const powerUpId = checkPowerUpCollection(x, y);
-          
+
           // Continue drawing
           if (isErasing) {
             // Eraser functionality - use destination-out compositing operation
@@ -794,7 +796,7 @@ hands.onResults((results) => {
             drawingCtx.lineCap = 'round';
             drawingCtx.stroke();
           }
-          
+
           // Send drawing data to server
           sendDrawData(xp, yp, x, y, powerUpId);
 
@@ -843,7 +845,7 @@ startAreaElement.addEventListener('click', () => {
 window.addEventListener('resize', () => {
   const container = document.querySelector('.container');
   const videoContainer = document.querySelector('.video-container');
-  
+
   // Keep aspect ratio consistent
   const maxWidth = Math.min(window.innerWidth, 1280);
   container.style.width = `${maxWidth}px`;

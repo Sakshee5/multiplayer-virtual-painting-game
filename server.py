@@ -1,10 +1,12 @@
 import asyncio
-import websockets
 import json
 import numpy as np
 import random
 import itertools
 import os
+from aiohttp import web
+import aiohttp
+from aiohttp import WSMsgType
 
 # Global variables
 connected_clients = {}  # Now will store {websocket: {"color": color, "username": username}}
@@ -13,7 +15,9 @@ color_pixel_perc = {str(color): 0 for color in draw_colors}
 img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Initialize the shared canvas
 game_duration = 60
 game_active = False  # To track whether the game is active
+countdown_active = False  # To prevent multiple countdowns
 connected_clients_lock = asyncio.Lock()  # To manage client connections safely
+countdown_lock = asyncio.Lock()  # Lock for countdown synchronization
 
 power_up_counter = itertools.count(start=1)  # Creates an incremental counter
 
@@ -44,32 +48,41 @@ async def spawn_power_ups():
         async with connected_clients_lock:
             for client in connected_clients:
                 try:
-                    await client.send(json.dumps({
+                    await client.send_json({
                         "type": "power_up_spawn",
                         "power_up": active_power_up
-                    }))
-                except websockets.exceptions.ConnectionClosedError:
+                    })
+                except Exception:
                     await remove_client(client)
 
-        await asyncio.sleep(random.randint(5, 10))  # Spawn every 5-10 seconds
+        await asyncio.sleep(random.randint(10, 15))  # Spawn every 10-20 seconds
 
 async def handle_countdown():
-    global color_pixel_perc, img_canvas, game_active
-    print("Game starting countdown!")
-    
-    # Ensure we're not sending duplicate countdowns
-    countdown_values = [3, 2, 1, "GO"]
-    
-    async with connected_clients_lock:
-        # Countdown logic
-        for count in countdown_values:
-            for client in connected_clients:
-                try:
-                    await client.send(json.dumps({"type": "countdown", "count": count}))
-                except websockets.exceptions.ConnectionClosedError:
-                    print("Client disconnected during countdown.")
-                    await remove_client(client)
-            await asyncio.sleep(1)  # Wait 1 second between countdowns
+    global color_pixel_perc, img_canvas, game_active, countdown_active
+
+    # Use the countdown lock to prevent multiple countdowns
+    async with countdown_lock:
+        if countdown_active:
+            return
+        countdown_active = True
+
+        print("Game starting countdown!")
+
+        # Ensure we're not sending duplicate countdowns
+        countdown_values = [3, 2, 1, "GO"]
+
+        async with connected_clients_lock:
+            # Countdown logic
+            for count in countdown_values:
+                for client in connected_clients:
+                    try:
+                        await client.send_json({"type": "countdown", "count": count})
+                    except Exception:
+                        print("Client disconnected during countdown.")
+                        await remove_client(client)
+                await asyncio.sleep(1)  # Wait 1 second between countdowns
+
+        countdown_active = False
 
 async def handle_start_game():
     """
@@ -84,8 +97,8 @@ async def handle_start_game():
     async with connected_clients_lock:
         for client in connected_clients:
             try:
-                await client.send(json.dumps({"type": "start"}))
-            except websockets.exceptions.ConnectionClosedError:
+                await client.send_json({"type": "start"})
+            except Exception:
                 print("Client disconnected during game start.")
                 await remove_client(client)
 
@@ -93,14 +106,15 @@ async def handle_reset_game():
     """
     Reset the game without stopping the server.
     """
-    global game_active
+    global game_active, countdown_active
     game_active = False  # Stop any ongoing game
+    countdown_active = False  # Reset countdown flag
     print("Game reset!")
     async with connected_clients_lock:
         for client in list(connected_clients):
             try:
-                await client.send(json.dumps({"type": "reset"}))
-            except websockets.exceptions.ConnectionClosedError:
+                await client.send_json({"type": "reset"})
+            except Exception:
                 print("Client disconnected during reset.")
                 await remove_client(client)
 
@@ -117,20 +131,20 @@ async def game_timer():
         async with connected_clients_lock:
             for client in connected_clients:
                 try:
-                    await client.send(json.dumps({"type": "timer", "time_left": t}))
-                except websockets.exceptions.ConnectionClosedError:
+                    await client.send_json({"type": "timer", "time_left": t})
+                except Exception:
                     print("Client disconnected during timer.")
                     await remove_client(client)
         await asyncio.sleep(1)
 
     # End game logic
     game_active = False
-    
+
     # Find winner based on color percentages
     if color_pixel_perc:
         winner_color = max(color_pixel_perc, key=color_pixel_perc.get)
         print(f"Winner is color {winner_color} with {color_pixel_perc[winner_color]}% pixels!")
-        
+
         # Convert the winner_color (which may be a tuple string like "(0, 255, 0)") into a list
         if isinstance(winner_color, str):
             try:
@@ -140,20 +154,20 @@ async def game_timer():
                 winner_color_list = [0, 0, 0]
         else:
             winner_color_list = list(winner_color)
-            
+
         winner_info = {"color": winner_color_list}
-        
+
         # Find client with winning color for username
         for client_info in connected_clients.values():
             if str(client_info["color"]) == winner_color:
                 winner_info["username"] = client_info.get("username", "Player")
                 break
-        
+
         async with connected_clients_lock:
             for client in connected_clients:
                 try:
-                    await client.send(json.dumps({"type": "winner", "winner": winner_info}))
-                except websockets.exceptions.ConnectionClosedError:
+                    await client.send_json({"type": "winner", "winner": winner_info})
+                except Exception:
                     print("Client disconnected during winner announcement.")
                     await remove_client(client)
     else:
@@ -168,15 +182,15 @@ async def broadcast_client_list():
                 "color": client_info["color"],
                 "username": client_info.get("username", f"Player {client_id}")
             }
-     
+
         for i, client in enumerate(connected_clients):
             try:
-                await client.send(json.dumps({
+                await client.send_json({
                     "type": "client_list",
                     "clients": client_list,
                     "self_id": i + 1  # Send each client their own identifier
-                }))
-            except websockets.exceptions.ConnectionClosedError:
+                })
+            except Exception:
                 print("Client disconnected while sending client list.")
                 await remove_client(client)
 
@@ -188,12 +202,10 @@ async def remove_client(client):
         print(f"Removing client {connected_clients[client]['color']}")
         del connected_clients[client]
 
-async def handler(websocket):
-    """
-    Handle incoming client connections and manage their interactions.
-    """
-    global connected_clients, color_pixel_perc
-    
+async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
     # Initial client setup with color assignment
     async with connected_clients_lock:
         if len(connected_clients) < len(draw_colors):
@@ -201,72 +213,92 @@ async def handler(websocket):
         else:
             assigned_color = draw_colors[len(connected_clients) % len(draw_colors)]
 
-        connected_clients[websocket] = {
+        connected_clients[ws] = {
             "color": assigned_color,
             "username": f"Player {len(connected_clients) + 1}"  # Default username
         }
-        
+
         # Send initial color assignment to the client
-        await websocket.send(json.dumps(assigned_color))
+        await ws.send_json(assigned_color)
 
     await broadcast_client_list()
 
     try:
-        async for message in websocket:
-            data = json.loads(message)
+        async for msg in ws:
+            if msg.type == WSMsgType.TEXT:
+                data = json.loads(msg.data)
 
-            # Username update
-            if data.get("type") == "username":
-                async with connected_clients_lock:
-                    connected_clients[websocket]["username"] = data.get("username", f"Player {len(connected_clients)}")
-                await broadcast_client_list()
-
-            # Start game signal
-            elif data.get("type") == "start":
-                await handle_countdown()
-                asyncio.create_task(game_timer())
-                await handle_start_game()
-                asyncio.create_task(spawn_power_ups())
-
-            # Reset game signal
-            elif data.get("type") == "reset":
-                await handle_reset_game()
-
-            # Pixel percentage update
-            elif data.get("type") == "pixel_update":
-                color = data.get("color")
-                pixel_perc = data.get("pixel_perc")
-                if color and pixel_perc is not None:
-                    color_str = str(tuple(color)) if isinstance(color, list) else str(color)
-                    color_pixel_perc[color_str] = pixel_perc
-
-            # Drawing logic
-            elif "x1" in data:  # Allow drawing only if game is active
-                if game_active:
-                    client_id = data.get("client_id")
-                    if "power_up_id" in data:
-                        pass
+                # Username update
+                if data.get("type") == "username":
                     async with connected_clients_lock:
-                        for client in connected_clients:
-                            try:
-                                await client.send(json.dumps(data))
-                            except websockets.exceptions.ConnectionClosedError:
-                                await remove_client(client)
+                        connected_clients[ws]["username"] = data.get("username", f"Player {len(connected_clients)}")
+                    await broadcast_client_list()
 
-    except websockets.exceptions.ConnectionClosedError:
-        print("Client disconnected unexpectedly.")
+                # Start game signal
+                elif data.get("type") == "start":
+                    if not game_active and not countdown_active:  # Only start if game isn't active and no countdown in progress
+                        await handle_countdown()
+                        asyncio.create_task(game_timer())
+                        await handle_start_game()
+                        asyncio.create_task(spawn_power_ups())
+                    else:
+                        print("Game or countdown already in progress, ignoring start signal")
+
+                # Reset game signal
+                elif data.get("type") == "reset":
+                    await handle_reset_game()
+
+                # Pixel percentage update
+                elif data.get("type") == "pixel_update":
+                    color = data.get("color")
+                    pixel_perc = data.get("pixel_perc")
+                    if color and pixel_perc is not None:
+                        color_str = str(tuple(color)) if isinstance(color, list) else str(color)
+                        color_pixel_perc[color_str] = pixel_perc
+
+                # Drawing logic
+                elif "x1" in data:  # Allow drawing only if game is active
+                    if game_active:
+                        client_id = data.get("client_id")
+                        if "power_up_id" in data:
+                            pass
+                        async with connected_clients_lock:
+                            for client in connected_clients:
+                                try:
+                                    await client.send_json(data)
+                                except Exception:
+                                    await remove_client(client)
+
+    except Exception as e:
+        print(f"Error in websocket handler: {e}")
     finally:
         async with connected_clients_lock:
-            await remove_client(websocket)
+            await remove_client(ws)
         await broadcast_client_list()
 
+    return ws
+
+async def index_handler(request):
+    return web.FileResponse('./index.html')
+
 async def main():
-    host = "0.0.0.0"  # Listen on all available interfaces
-    port = int(os.environ.get("PORT", 8080))  # Use PORT environment variable or default to 8080
-    
-    print(f"Server starting on {host}:{port}")
-    async with websockets.serve(handler, host, port):
-        await asyncio.Future()  # run forever
+    app = web.Application()
+    app.router.add_get('/', index_handler)
+    app.router.add_get('/ws', websocket_handler)
+    app.router.add_static('/', '.', show_index=True)
+
+    port = int(os.environ.get("PORT", 8080))
+
+    print(f"Server starting on port {port}")
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+
+    print("Server is running...")
+    # Keep the server running
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
     asyncio.run(main())
