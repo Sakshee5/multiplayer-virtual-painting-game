@@ -16,6 +16,11 @@ const usernameModal = document.getElementById('username-modal');
 const usernameInput = document.getElementById('username-input');
 const submitUsernameButton = document.getElementById('submit-username');
 
+// Create drawing area border element
+const drawingAreaBorder = document.createElement('div');
+drawingAreaBorder.className = 'drawing-area-border';
+document.querySelector('.video-container').appendChild(drawingAreaBorder);
+
 // Audio elements
 const beepSound = document.getElementById('beepSound');
 const goSound = document.getElementById('goSound');
@@ -25,7 +30,7 @@ const winnerSound = document.getElementById('winnerSound');
 
 // Set the canvas dimensions to match the video dimensions
 canvasElement.width = 1280;
-canvasElement.height = 522;
+canvasElement.height = 720;
 drawingCanvas.width = 1280;
 drawingCanvas.height = 522;
 
@@ -59,7 +64,7 @@ let countdownActive = false;
 
 // Position playerScoresElement
 playerScoresElement.style.position = 'absolute';
-playerScoresElement.style.bottom = '10px';
+playerScoresElement.style.bottom = '220px';
 playerScoresElement.style.right = '10px';
 playerScoresElement.style.backgroundColor = 'rgba(0,0,0,0.7)';
 playerScoresElement.style.color = 'white';
@@ -582,10 +587,21 @@ function isInArea(x, y, areaX, areaY, areaWidth, areaHeight) {
   return x >= areaX && x <= areaX + areaWidth && y >= areaY && y <= areaY + areaHeight;
 }
 
+// Function to scale coordinates from camera space to drawing space
+function scaleCoordinates(x, y) {
+  // Flip x coordinate
+  const scaledX = canvasElement.width - x * canvasElement.width;
+  
+  const absoluteY = y * canvasElement.height;  // Get position in 720px space
+
+  return { x: scaledX, y: absoluteY };
+}
+
 // Check for power-up collection
 function checkPowerUpCollection(x, y) {
   for (let i = 0; i < powerUpsAvailable.length; i++) {
     const powerUp = powerUpsAvailable[i];
+    // Power-up coordinates are already in drawing canvas space
     if (Math.abs(x - powerUp.x) < 20 && Math.abs(y - powerUp.y) < 20) {
       return powerUp.id;
     }
@@ -690,13 +706,13 @@ hands.setOptions({
 // Process hand landmarks for drawing
 hands.onResults((results) => {
   // Draw camera feed
-    canvasCtx.save();
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
   // Draw the camera feed with mirrored view consistently
-    canvasCtx.translate(canvasElement.width, 0);
-    canvasCtx.scale(-1, 1);
-    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.translate(canvasElement.width, 0);
+  canvasCtx.scale(-1, 1);
+  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
   // Process hands
   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
@@ -707,59 +723,60 @@ hands.onResults((results) => {
     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.4)', lineWidth: 0.5});
     drawLandmarks(canvasCtx, landmarks, {color: 'rgba(255, 255, 255, 0.5)', lineWidth: 0.5, radius: 2});
 
-    // Get index finger position
+    // Get index finger position and scale coordinates
     const indexFinger = landmarks[8];
-    const x = canvasElement.width - indexFinger.x * canvasElement.width;
-    const y = indexFinger.y * canvasElement.height;
+    const { x, y } = scaleCoordinates(indexFinger.x, indexFinger.y);
 
-    // Handle two fingers up (selection mode)
-    if (isTwoFingersUp(landmarks)) {
-      // Check if in start area
-      if (!gameActive && !gameCountdown && isInArea(x, y, 340, 300, 200, 100)) {
-        startAreaElement.style.backgroundColor = "rgba(0,255,0,0.3)";
-        // On click effect - send start command
-        if (!gameReset) {
-          websocket.send(JSON.stringify({ type: "start" }));
+    // Only process drawing if y is within the drawing canvas bounds
+    if (y <= 522) {
+      // Handle two fingers up (selection mode)
+      if (isTwoFingersUp(landmarks)) {
+        // Check if in start area (coordinates are in drawing canvas space)
+        if (!gameActive && !gameCountdown && isInArea(x, y, 340, 300, 200, 100)) {
+          startAreaElement.style.backgroundColor = "rgba(0,255,0,0.3)";
+          // On click effect - send start command
+          if (!gameReset) {
+            websocket.send(JSON.stringify({ type: "start" }));
+          }
+        } else {
+          startAreaElement.style.backgroundColor = "transparent";
         }
-      } else {
-        startAreaElement.style.backgroundColor = "transparent";
+        
+        // Check if in reset area (coordinates are in drawing canvas space)
+        if (gameReset && isInArea(x, y, 740, 300, 200, 100)) {
+          resetAreaElement.style.backgroundColor = "rgba(255,0,0,0.3)";
+          // On click effect - send reset command
+          websocket.send(JSON.stringify({ type: "reset" }));
+        } else {
+          resetAreaElement.style.backgroundColor = "transparent";
+        }
       }
       
-      // Check if in reset area (only active when gameReset is true)
-      if (gameReset && isInArea(x, y, 740, 300, 200, 100)) {
-        resetAreaElement.style.backgroundColor = "rgba(255,0,0,0.3)";
-        // On click effect - send reset command
-        websocket.send(JSON.stringify({ type: "reset" }));
-      } else {
-        resetAreaElement.style.backgroundColor = "transparent";
-      }
-    }
-    
-    // Handle index finger for drawing
-        if (isIndexFingerUp(landmarks) && gameActive) {
-          if (!isDrawing) {
-        // Start drawing
-            isDrawing = true;
-            xp = x;
-            yp = y;
-          } else {
-        // Check for power-up collection
-        const powerUpId = checkPowerUpCollection(x, y);
-        
-        // Continue drawing
-        if (isErasing) {
-          // Eraser functionality - use destination-out compositing operation
-          drawingCtx.globalCompositeOperation = 'destination-out';
-          drawingCtx.beginPath();
-          drawingCtx.moveTo(xp, yp);
-          drawingCtx.lineTo(x, y);
-          drawingCtx.strokeStyle = 'rgba(255,255,255,1)';
-          drawingCtx.lineWidth = brushThickness;
-          drawingCtx.lineCap = 'round';
-          drawingCtx.stroke();
-          drawingCtx.globalCompositeOperation = 'source-over';
+      // Handle index finger for drawing
+      if (isIndexFingerUp(landmarks) && gameActive) {
+        if (!isDrawing) {
+          // Start drawing
+          isDrawing = true;
+          xp = x;
+          yp = y;
         } else {
-          // Normal drawing
+          // Check for power-up collection
+          const powerUpId = checkPowerUpCollection(x, y);
+          
+          // Continue drawing
+          if (isErasing) {
+            // Eraser functionality - use destination-out compositing operation
+            drawingCtx.globalCompositeOperation = 'destination-out';
+            drawingCtx.beginPath();
+            drawingCtx.moveTo(xp, yp);
+            drawingCtx.lineTo(x, y);
+            drawingCtx.strokeStyle = 'rgba(255,255,255,1)';
+            drawingCtx.lineWidth = brushThickness;
+            drawingCtx.lineCap = 'round';
+            drawingCtx.stroke();
+            drawingCtx.globalCompositeOperation = 'source-over';
+          } else {
+            // Normal drawing
             drawingCtx.beginPath();
             drawingCtx.moveTo(xp, yp);
             drawingCtx.lineTo(x, y);
@@ -767,23 +784,26 @@ hands.onResults((results) => {
             drawingCtx.lineWidth = brushThickness;
             drawingCtx.lineCap = 'round';
             drawingCtx.stroke();
-        }
-        
-        // Send drawing data to server
-        sendDrawData(xp, yp, x, y, powerUpId);
-  
-        // Update position
-            xp = x;
-            yp = y;
           }
-        } else {
-          isDrawing = false;
+          
+          // Send drawing data to server
+          sendDrawData(xp, yp, x, y, powerUpId);
+
+          // Update position
+          xp = x;
+          yp = y;
         }
+      } else {
+        isDrawing = false;
+      }
+    } else {
+      isDrawing = false;
+    }
   } else {
     isDrawing = false;
-    }
-  
-    canvasCtx.restore();
+  }
+
+  canvasCtx.restore();
 });
 
 // Initialize camera
@@ -792,7 +812,7 @@ const camera = new Camera(videoElement, {
     await hands.send({image: videoElement});
   },
   width: 1280,
-  height: 522
+  height: 720  // Back to 720 for better hand detection
 });
 
 camera.start();
@@ -814,13 +834,11 @@ startAreaElement.addEventListener('click', () => {
 window.addEventListener('resize', () => {
   const container = document.querySelector('.container');
   const videoContainer = document.querySelector('.video-container');
-  const splash = document.querySelector('.splash');
   
   // Keep aspect ratio consistent
   const maxWidth = Math.min(window.innerWidth, 1280);
   container.style.width = `${maxWidth}px`;
-  videoContainer.style.height = `${(maxWidth / 1280) * 522}px`;
-  splash.style.height = `${(maxWidth / 1280) * 198}px`;
+  videoContainer.style.height = `${(maxWidth / 1280) * 720}px`;
 });
 
 // Handle page visibility change (pause/resume game sounds)
