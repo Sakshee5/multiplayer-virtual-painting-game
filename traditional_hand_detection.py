@@ -310,33 +310,45 @@ class SimpleHandDetector:
         try:
             features = self.extract_features(frame)
             if features is None:
+                print("No features extracted from frame")
                 return frame, None
                 
             # First check if hand is present
             if self.hand_present_classifier is not None:
                 hand_confidence = self.hand_present_classifier.predict_proba([features])[0][1]
-                
                 # Only predict landmarks if confident hand is present
                 if hand_confidence > 0.7:  # Confidence threshold
                     landmarks = []
-                    for model in self.models:
+                    print("Predicting landmarks...")
+                    for i, model in enumerate(self.models):
                         pred = model.predict([features])[0]
                         landmarks.append(pred)
+                        print(f"Landmark {i} prediction: {pred:.3f}")
                     
                     # Draw predictions with confidence
                     height, width = frame.shape[:2]
                     colors = [(0, 255, 0), (255, 0, 0)]  # Green for index, Blue for middle
                     
+                    # Estimate hand size and center from the frame size
+                    # Using similar proportions as during training
+                    hand_size = min(width, height) * 0.3  # Assume hand takes up about 30% of frame
+                    hand_center_x = width / 2
+                    hand_center_y = height / 2
+                    
                     for i in range(0, len(landmarks), 2):
-                        x = int(landmarks[i] * width)
-                        y = int(landmarks[i + 1] * height)
+                        # Denormalize coordinates using the same scheme as in training
+                        x = int((landmarks[i] * hand_size + hand_center_x))
+                        y = int((landmarks[i + 1] * hand_size + hand_center_y))
                         finger_idx = i // 2
+                        print(f"Drawing {['Index', 'Middle'][finger_idx]} finger at ({x}, {y})")
                         
                         if 0 <= x < width and 0 <= y < height:
                             cv2.circle(frame, (x, y), 8, colors[finger_idx], -1)
                             label = f"{'Index' if finger_idx == 0 else 'Middle'}"
                             cv2.putText(frame, label, (x + 10, y), 
                                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, colors[finger_idx], 2)
+                        else:
+                            print(f"Warning: Coordinates ({x}, {y}) out of frame bounds ({width}, {height})")
                     
                     cv2.putText(frame, f"Confidence: {hand_confidence:.2f}", 
                               (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
@@ -346,6 +358,7 @@ class SimpleHandDetector:
                               (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                     return frame, None
             else:
+                print("Hand classifier not loaded")
                 cv2.putText(frame, "Models not properly loaded", 
                           (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                 return frame, None
