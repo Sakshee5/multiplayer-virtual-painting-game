@@ -59,13 +59,12 @@ let clientData = {};
 
 // WebSocket connection
 const getWebSocketUrl = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // If running locally, use localhost, otherwise use the Replit URL
-    if (window.location.hostname === 'localhost') {
-        return `${protocol}//localhost:8080/ws`;
+    // If running from file:// protocol, use localhost
+    if (window.location.protocol === 'file:') {
+        return 'ws://localhost:8080/ws';
     } else {
         // For Replit, use the same hostname and add /ws path
-        return `${protocol}//${window.location.hostname}/ws`;
+        return `${window.location.protocol}//${window.location.hostname}/ws`;
     }
 };
 
@@ -682,7 +681,7 @@ async function sendDrawData(x1, y1, x2, y2, powerUpId) {
 function applyPaintBucket() {
   const x = Math.floor(Math.random() * 1160) + 50;
   const y = Math.floor(Math.random() * 400) + 50;
-  
+
   // Send paint bucket action to server
   websocket.send(JSON.stringify({
     type: "paint_bucket",
