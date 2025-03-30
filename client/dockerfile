@@ -1,16 +1,22 @@
 FROM nginx:alpine
 
-# Create the assets directory
-RUN mkdir -p /usr/share/nginx/html/assets
-
-# Copy the client files to nginx's serve directory
+# Copy static files
 COPY . /usr/share/nginx/html/
 
-# Ensure assets directory has correct permissions
-RUN chmod -R 755 /usr/share/nginx/html/assets
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 80
-EXPOSE 80
+# Create directory for SSL certificates
+RUN mkdir -p /etc/nginx/ssl
+
+# Generate self-signed SSL certificate
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/key.pem \
+    -out /etc/nginx/ssl/cert.pem \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+
+# Expose HTTPS port
+EXPOSE 443
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

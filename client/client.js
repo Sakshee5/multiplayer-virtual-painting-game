@@ -873,7 +873,48 @@ const camera = new Camera(videoElement, {
   height: 720  // Back to 720 for better hand detection
 });
 
-camera.start();
+// Add camera initialization with error handling
+async function initializeCamera() {
+  try {
+    // Check if we're in a secure context
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      throw new Error('Camera access requires HTTPS or localhost');
+    }
+
+    // Check if mediaDevices API is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Camera API not available in this browser');
+    }
+
+    // Request camera permission
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    videoElement.srcObject = stream;
+    
+    // Start camera processing
+    await camera.start();
+  } catch (error) {
+    console.error('Camera initialization error:', error);
+    // Display error message to user
+    const errorMessage = document.createElement('div');
+    errorMessage.style.color = 'red';
+    errorMessage.style.padding = '20px';
+    errorMessage.style.textAlign = 'center';
+    errorMessage.innerHTML = `
+      <h2>Camera Access Error</h2>
+      <p>${error.message}</p>
+      <p>Please ensure:</p>
+      <ul style="text-align: left; display: inline-block;">
+        <li>You're using HTTPS or localhost</li>
+        <li>You've granted camera permissions</li>
+        <li>Your browser supports camera access</li>
+      </ul>
+    `;
+    document.querySelector('.container').prepend(errorMessage);
+  }
+}
+
+// Call initializeCamera instead of camera.start()
+initializeCamera();
 
 // Event listeners
 resetAreaElement.addEventListener('click', () => {
