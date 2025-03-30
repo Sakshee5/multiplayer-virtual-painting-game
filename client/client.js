@@ -63,8 +63,9 @@ const getWebSocketUrl = () => {
     if (window.location.protocol === 'file:') {
         return 'ws://localhost:8080/ws';
     } else {
-        // For Replit, use the same hostname and add /ws path
-        return `${window.location.protocol}//${window.location.hostname}/ws`;
+        // For HTTPS, use wss:// protocol
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${window.location.hostname}/ws`;
     }
 };
 
