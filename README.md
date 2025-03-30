@@ -3,31 +3,21 @@
 Splashh is a **Multiplayer Drawing Game** with real-time interactions powered by WebSockets, MediaPipe Hands, and JavaScript. Players can join a game, use hand gestures to draw on a shared canvas, and compete to fill the most canvas area while utilizing various power-ups.
 
 Gameplay Snippet
-![Gameplay Snippet](assets/video_snippet.gif)
+![Gameplay Snippet - Old version](client/assets/video_snippet.gif)
 
-[Complete Video Walkthrough](https://youtu.be/SlA19znMufY?si=TuDvYnA9aIcu4sZw)
-
-
-## Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Setup](#setup)
-- [How to Run](#how-to-run)
-- [How It Works](#how-it-works)
-- [Code Overview](#code-overview)
-- [Power-Ups](#power-ups)
-- [Future Enhancements](#future-enhancements)
-- [Contributing](#contributing)
-- [License](#license)
-
+[Complete Video Walkthrough - Old version](https://youtu.be/SlA19znMufY?si=TuDvYnA9aIcu4sZw)
 
 ## Features
-- **Real-Time Multiplayer Drawing**: Players can draw on a shared canvas using MediaPipe Hands for gesture tracking.
-- **WebSocket Communication**: Ensures smooth, real-time updates between the server and clients.
-- **Power-Ups**: Players can collect and use power-ups like erasers, paint buckets, and more to influence gameplay.
-- **Countdown Timer and Score Display**: Tracks the game duration and dynamically displays scores.
-- **Gesture-Based Controls**: Use hand gestures to start/reset the game.
-
+- **Real-Time Multiplayer Drawing**: Players can draw on a shared canvas using MediaPipe Hands for gesture tracking
+- **WebSocket Communication**: Ensures smooth, real-time updates between the server and clients
+- **Power-Ups**: Players can collect and use power-ups like erasers, paint buckets, and more to influence gameplay
+- **Countdown Timer and Score Display**: Tracks the game duration and dynamically displays scores
+- **Gesture-Based Controls**: Use hand gestures to start/reset the game
+- **Username System**: Players can set custom usernames for better identification
+- **Responsive Design**: Adapts to different screen sizes while maintaining aspect ratio
+- **Sound Effects**: Audio feedback for game events, power-ups, and winner announcements
+- **Canvas Synchronization**: Real-time canvas updates across all connected players
+- **Score Tracking**: Percentage-based scoring system for fair competition
 
 ## Tech Stack
 - **Frontend**:
@@ -35,58 +25,111 @@ Gameplay Snippet
   - MediaPipe Hands for hand gesture tracking
   - WebSocket client for real-time communication
   - Modern CSS3 for UI/UX
+  - JavaScript for game logic and interactions
 
 - **Backend**:
-  - Python WebSocket server
+  - Python WebSocket server (aiohttp)
   - NumPy for canvas data management
   - Asyncio for asynchronous operations
+  - Docker for containerization
 
-## How to Run
+## Installation & Setup
 
-### Server
-1. Start the WebSocket server:
-```python server.py```
+### Local Development
+1. Clone the repository:
+```bash
+git clone https://github.com/Sakshee5/multiplayer-virtual-painting-game.git
+cd multiplayer-virtual-painting-game
+```
 
-### Client
-2. Open the `index.html` file in a modern web browser with webcam access.
+2. Install dependencies:
+```bash
+# Server dependencies
+cd server
+pip install -r requirements.txt
 
-Note: For the hackathon, I am deploying the server on ngrok for temporary basis to showcase multiplayer interactivity.
+# Client dependencies (none required, uses CDN for libraries)
+```
+
+3. Start the server:
+```bash
+python server.py
+```
+
+4. Open `client/index.html` in a web browser with webcam access.
+
+### Docker Deployment
+Access the game at `https://vcm-47044.vm.duke.edu/`
 
 ## How It Works
 
 ### General Flow
-- The **server** (`server.py`) manages client connections, broadcasts updates about the shared canvas, power-ups, and game events.
+- The **server** (`server.py`) manages:
+  - Client connections and disconnections
+  - Game state and synchronization
+  - Power-up spawning and management
+  - Score tracking and winner determination
+  - Real-time canvas updates
+
 - The **client** (`client.js`) handles:
   - Hand tracking using MediaPipe Hands
   - Canvas drawing and updates
   - WebSocket communication
   - Power-up effects and game state management
+  - User interface and interactions
 
-### Game Modes
-- **Start Gestures**: Keep index and middle finger upright and move your hand over the "START" button to begin.
-- **Reset Gestures**: Keep index and middle finger upright and move your hand over the "RESET" button to reset the game.
+### Game Controls
+- **Start Game**: Keep index and middle fingers upright and move over the "START" button
+- **Reset Game**: Keep index and middle fingers upright and move over the "RESET" button
+- **Drawing**: Use index finger to draw on the canvas
+- **Power-up Collection**: Touch power-ups with index finger to collect them
 
 ### Real-Time Drawing
-- The index finger is tracked for drawing on the canvas
-- Draw paths are broadcast to all connected players via WebSocket
-- Canvas updates are synchronized across all clients
+- Index finger tracking for precise drawing
+- Real-time path broadcasting to all players
+- Synchronized canvas updates across clients
+- Brush thickness and color management
 
 ## Power-Ups
-### List of Power-Ups
-1. <img src="assets/eraser.png" alt="Eraser Power-up" width="20">  **Eraser**: Temporarily (5 secs) allows the player to erase opponent drawings.
-2. <img src="assets/devil_face.png" alt="Devil Face Power-up" width="20"> **Devil Face**: Reduces the opponent's brush size for 5 seconds.
-3. <img src="assets/paint_bucket.png" alt="Paint Bucket Power-up" width="20"> **Paint Bucket**: Fills a random area on the canvas with the player's color.
-4. <img src="assets/paint_brush.png" alt="Paint Brush Power-up" width="20"> **Paint Brush**: Temporarily (5 secs) increases the player's brush size.
+### Available Power-Ups
+1. <img src="server/assets/eraser.png" alt="Eraser Power-up" width="20"> **Eraser**: Temporarily (5 secs) allows erasing opponent drawings
+2. <img src="server/assets/devil_face.png" alt="Devil Face Power-up" width="20"> **Devil Face**: Reduces opponent's brush size for 5 seconds
+3. <img src="server/assets/paint_bucket.png" alt="Paint Bucket Power-up" width="20"> **Paint Bucket**: Fills a random area with player's color
+4. <img src="server/assets/paint_brush.png" alt="Paint Brush Power-up" width="20"> **Paint Brush**: Temporarily increases brush size
 
-### Power-Up Spawning
-- Power-ups spawn at random intervals (5-10 seconds)
-- Random locations on the canvas
-- Collected by touching with the index finger
+### Power-Up Mechanics
+- Random spawning every 10-15 seconds
+- Unique IDs for each power-up
+- Visual indicators on the canvas
+- Sound effects on collection
+- Temporary effects (5-second duration)
+
+## Ethics Statement
+
+This project adheres to the following ethical principles:
+
+1. **Privacy & Data Protection**:
+   - No personal data is stored or transmitted beyond usernames
+   - Webcam data is processed locally and never stored
+   - All communications are encrypted using HTTPS/WSS
+
+2. **Accessibility**:
+   - Designed to work with standard web browsers
+   - Clear visual feedback for all actions
+   - Audio cues for important events
+
+3. **Fair Play**:
+   - Equal starting conditions for all players
+   - Transparent scoring system
+   - Random power-up distribution
+
 
 ## Future Enhancements
 - Improve hand-tracking accuracy for complex gestures
 - Add more power-ups and effects
-- Create a UI for lobby management (e.g., joining/leaving games)
-- Deploy the WebSocket server to cloud-based platforms for wider accessibility
-- Suite of Games Based on Virtual Drawing. For instance, a virtual Pictionary game
-- Explore integrations with platforms like Zoom or Microsoft Teams. Splashh could be used as a fun and engaging icebreaker for virtual meetings, energizing participants and encouraging collaboration before diving into business discussions.
+- Create a UI for lobby management
+- Deploy to cloud platforms for wider accessibility
+- Suite of Games Based on Virtual Drawing (e.g., Pictionary)
+- Platform integrations (Zoom, Microsoft Teams)
+- Enhanced accessibility features
+- Mobile device support
