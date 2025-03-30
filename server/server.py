@@ -26,10 +26,10 @@ def generate_power_up_id():
 
 # Constants for power-ups
 POWER_UPS = [
-    {"type": "eraser", "image": "assets/eraser.png", "id": None},
-    {"type": "devil_face", "image": "assets/devil_face.png", "id": None},
-    {"type": "paint_bucket", "image": "assets/paint_bucket.png", "id": None},
-    {"type": "paint_brush", "image": "assets/paint_brush.png", "id": None}
+    {"type": "eraser", "image": "../assets/eraser.png", "id": None},
+    {"type": "devil_face", "image": "../assets/devil_face.png", "id": None},
+    {"type": "paint_bucket", "image": "../assets/paint_bucket.png", "id": None},
+    {"type": "paint_brush", "image": "../assets/paint_brush.png", "id": None}
 ]
 
 async def spawn_power_ups():
@@ -257,6 +257,18 @@ async def websocket_handler(request):
                     if color and pixel_perc is not None:
                         color_str = str(tuple(color)) if isinstance(color, list) else str(color)
                         color_pixel_perc[color_str] = pixel_perc
+                        
+                        # Broadcast the updated score to all clients
+                        async with connected_clients_lock:
+                            for client in connected_clients:
+                                try:
+                                    await client.send_json({
+                                        "type": "pixel_update",
+                                        "color": color,
+                                        "pixel_perc": pixel_perc
+                                    })
+                                except Exception:
+                                    await remove_client(client)
 
                 # Drawing logic
                 elif "x1" in data:  # Allow drawing only if game is active
@@ -291,7 +303,7 @@ async def websocket_handler(request):
     return ws
 
 async def index_handler(request):
-    return web.FileResponse('./index.html')
+    return web.FileResponse('../client/index.html')
 
 async def main():
     app = web.Application()

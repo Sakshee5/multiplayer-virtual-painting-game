@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  client:
+    build: 
+      context: ./client
+      dockerfile: dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ./server
+      dockerfile: dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./requirements.txt:/app/requirements.txt

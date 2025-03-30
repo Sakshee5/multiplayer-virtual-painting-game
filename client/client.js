@@ -436,6 +436,17 @@ function connectWebSocket() {
         }
       }
 
+      // Handle pixel updates from other players
+      if (data.type === "pixel_update") {
+        const color = data.color;
+        const pixel_perc = data.pixel_perc;
+        if (color && pixel_perc !== undefined) {
+          const colorKey = Array.isArray(color) ? `${color[0]},${color[1]},${color[2]}` : color;
+          clientData[colorKey] = pixel_perc;
+          updateScores();
+        }
+      }
+
       // Handle paint bucket action from other clients
       if (data.type === "paint_bucket" && data.client_id !== selfId) {
         drawPaintBucket(data.x, data.y, data.color);

@@ -1,0 +1,10 @@
+FROM nginx:alpine
+
+# Copy the client files to nginx's serve directory
+COPY . /usr/share/nginx/html/
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
