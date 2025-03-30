@@ -61,7 +61,7 @@ let clientData = {};
 const getWebSocketUrl = () => {
     // If running from file:// protocol, use localhost
     if (window.location.protocol === 'file:') {
-        return 'ws://localhost:8080/ws';
+        return 'ws://localhost:5000/ws';
     } else {
         // For HTTPS, use wss:// protocol
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

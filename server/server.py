@@ -309,7 +309,7 @@ async def main():
     app.router.add_get('/ws', websocket_handler)
     app.router.add_static('/', '.', show_index=True)
 
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 5000))  # Changed default port to 5000
 
     print(f"Server starting on port {port}")
     runner = web.AppRunner(app)

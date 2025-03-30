@@ -11,6 +11,7 @@ services:
       - server
     networks:
       - app-network
+    restart: unless-stopped
 
   server:
     build:
@@ -20,11 +21,14 @@ services:
       - "5000:5000"
     volumes:
       - ./server/requirements.txt:/app/requirements.txt
+    environment:
+      - PORT=5000
     command: >
       sh -c "pip install --no-cache-dir -r requirements.txt &&
              python server.py"
     networks:
       - app-network
+    restart: unless-stopped
 
 networks:
   app-network:
