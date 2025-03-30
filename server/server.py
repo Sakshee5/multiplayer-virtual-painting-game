@@ -4,9 +4,7 @@ import numpy as np
 import random
 import itertools
 import os
-from aiohttp import web
-import aiohttp
-from aiohttp import WSMsgType
+from aiohttp import web, WSMsgType
 
 # Global variables
 connected_clients = {}  # Now will store {websocket: {"color": color, "username": username}}
