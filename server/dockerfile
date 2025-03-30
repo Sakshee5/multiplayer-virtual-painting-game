@@ -3,8 +3,14 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /app
 
-# Copy the server code
+# Create assets directory
+RUN mkdir -p /app/assets
+
+# Copy the server code and assets
 COPY . .
+
+# Ensure assets directory has correct permissions
+RUN chmod -R 755 /app/assets
 
 # Expose the port the server runs on
 EXPOSE 5000

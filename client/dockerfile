@@ -1,7 +1,13 @@
 FROM nginx:alpine
 
+# Create the assets directory
+RUN mkdir -p /usr/share/nginx/html/assets
+
 # Copy the client files to nginx's serve directory
 COPY . /usr/share/nginx/html/
+
+# Ensure assets directory has correct permissions
+RUN chmod -R 755 /usr/share/nginx/html/assets
 
 # Expose port 80
 EXPOSE 80

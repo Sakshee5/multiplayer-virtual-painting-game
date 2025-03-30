@@ -24,10 +24,10 @@ def generate_power_up_id():
 
 # Constants for power-ups
 POWER_UPS = [
-    {"type": "eraser", "image": "../assets/eraser.png", "id": None},
-    {"type": "devil_face", "image": "../assets/devil_face.png", "id": None},
-    {"type": "paint_bucket", "image": "../assets/paint_bucket.png", "id": None},
-    {"type": "paint_brush", "image": "../assets/paint_brush.png", "id": None}
+    {"type": "eraser", "image": "assets/eraser.png", "id": None},
+    {"type": "devil_face", "image": "assets/devil_face.png", "id": None},
+    {"type": "paint_bucket", "image": "assets/paint_bucket.png", "id": None},
+    {"type": "paint_brush", "image": "assets/paint_brush.png", "id": None}
 ]
 
 async def spawn_power_ups():

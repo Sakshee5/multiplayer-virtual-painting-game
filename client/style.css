@@ -55,7 +55,7 @@ body {
     left: 0;
     width: 100%;
     height: 198px;
-    background-image: url('../assets/splashh.png');
+    background-image: url('assets/splashh.png');
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;
