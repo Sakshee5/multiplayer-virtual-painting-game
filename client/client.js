@@ -16,6 +16,29 @@ const usernameModal = document.getElementById('username-modal');
 const usernameInput = document.getElementById('username-input');
 const submitUsernameButton = document.getElementById('submit-username');
 
+// Apply responsive styling for smaller screens
+document.addEventListener('DOMContentLoaded', function() {
+  const videoContainer = document.querySelector('.video-container');
+  const container = document.querySelector('.container');
+  
+  // Function to check screen size and apply scrolling if needed
+  function checkScreenSize() {
+    if (window.innerHeight < 768) { // Adjust this value based on your content height
+      container.style.height = 'auto';
+      container.style.overflowY = 'auto';
+      document.body.style.overflowY = 'auto';
+    } else {
+      container.style.height = '';
+      container.style.overflowY = '';
+      document.body.style.overflowY = '';
+    }
+  }
+  
+  // Check on load and resize
+  checkScreenSize();
+  window.addEventListener('resize', checkScreenSize);
+});
+
 // Create drawing area border element
 const drawingAreaBorder = document.createElement('div');
 drawingAreaBorder.className = 'drawing-area-border';
@@ -173,6 +196,9 @@ function connectWebSocket() {
           const connectedClients = data.clients;
           selfId = data.self_id;
           clientData = {}; // Clear client data
+
+          // Store client list for use in updateScores
+          websocket.lastClientList = connectedClients;
 
           // Update clientData based on client list
           for (const [clientId, clientInfo] of Object.entries(connectedClients)) {
@@ -397,6 +423,24 @@ function connectWebSocket() {
                 if (powerUpType === "devil_face") {
                   applyDevilFace();
                 }
+
+                // Add surprise power-up handling
+                if (powerUpType === "surprise") {
+                  // Randomly select one of the other power-ups
+                  const powerUps = ["paint_bucket", "paint_brush", "eraser", "devil_face"];
+                  const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
+                  
+                  // Apply the randomly selected power-up
+                  if (randomPowerUp === "paint_bucket") {
+                    applyPaintBucket();
+                  } else if (randomPowerUp === "paint_brush") {
+                    applyPaintBrush();
+                  } else if (randomPowerUp === "eraser") {
+                    applyEraser();
+                  } else if (randomPowerUp === "devil_face") {
+                    applyDevilFace();
+                  }
+                }
               }
 
               break;
@@ -461,29 +505,28 @@ function connectWebSocket() {
 
 // Function to update power-up display
 function updatePowerUpDisplay() {
-    // Clear existing power-up elements
-    powerUpsContainer.innerHTML = '';
+  // Clear existing power-up elements
+  powerUpsContainer.innerHTML = '';
 
-    // Create elements for each power-up
-    powerUpsAvailable.forEach(powerUp => {
-      const powerUpElement = document.createElement('div');
-      powerUpElement.className = 'power-up';
-      powerUpElement.style.position = 'absolute';
-      powerUpElement.style.left = `${powerUp.x}px`;
-      powerUpElement.style.top = `${powerUp.y}px`;
+  // Create elements for each power-up
+  powerUpsAvailable.forEach(powerUp => {
+    const powerUpElement = document.createElement('div');
+    powerUpElement.className = 'power-up';
+    powerUpElement.style.position = 'absolute';
+    powerUpElement.style.left = `${powerUp.x}px`;
+    powerUpElement.style.top = `${powerUp.y}px`;
 
-      
-      // Instead of text, create an image element
-      const img = document.createElement('img');
-      // Ensure the image path is correct relative to your HTML file.
-      img.src = powerUp.image; // e.g., "eraser.png", "devil_face.png", etc.
-      img.style.width = '30px';  // Adjust size as needed
-      img.style.height = '30px';
+    // Create an image element
+    const img = document.createElement('img');
+    // Use URL constructor to properly resolve the path
+    img.src = new URL(powerUp.image, window.location.origin).href;
+    img.style.width = '30px';  // Adjust size as needed
+    img.style.height = '30px';
 
-      // Append the image to the power-up element
-      powerUpElement.appendChild(img);
-      powerUpsContainer.appendChild(powerUpElement);
-    });
+    // Append the image to the power-up element
+    powerUpElement.appendChild(img);
+    powerUpsContainer.appendChild(powerUpElement);
+  });
 }
 
 // Function to clear the drawing canvas
@@ -510,6 +553,7 @@ function updateScores() {
   // Sort client data by percentage (descending)
   const sortedEntries = Object.entries(clientData).sort((a, b) => b[1] - a[1]);
 
+  // Find player names from the most recent client list
   for (const [colorStr, percentage] of sortedEntries) {
     let color;
     if (colorStr.includes(',')) {
@@ -519,19 +563,39 @@ function updateScores() {
     }
 
     const colorCSS = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-
+    let playerName = "";
+    
+    // Find player name matching this color
     if (color[0] === DRAW_COLOR[0] && color[1] === DRAW_COLOR[1] && color[2] === DRAW_COLOR[2]) {
-      scoresHTML += `<div style="color: ${colorCSS}; font-weight: bold; margin-bottom: 5px;">
-                      YOU: ${percentage.toFixed(2)}%
-                    </div>`;
-    } else if (color[0] === 0 && color[1] === 0 && color[2] === 0) {
+      playerName = "YOU";
+    } else {
+      // Try to find the name in the client list
+      for (const [clientId, clientInfo] of Object.entries(websocket.lastClientList || {})) {
+        const clientColor = Array.isArray(clientInfo.color) ? clientInfo.color : 
+                          (typeof clientInfo.color === 'string' && clientInfo.color.startsWith('[')) ? 
+                          JSON.parse(clientInfo.color) : 
+                          clientInfo.color;
+        
+        if (clientColor[0] === color[0] && clientColor[1] === color[1] && clientColor[2] === color[2]) {
+          playerName = clientInfo.username || `Player ${clientId}`;
+          break;
+        }
+      }
+      
+      // If we couldn't find the name, fall back to showing the color
+      if (!playerName) {
+        playerName = `(${color[0]}, ${color[1]}, ${color[2]})`;
+      }
+    }
+
+    if (color[0] === 0 && color[1] === 0 && color[2] === 0) {
       // Skip black color
       continue;
-    } else {
-      scoresHTML += `<div style="color: ${colorCSS}; margin-bottom: 5px;">
-                      (${color[0]}, ${color[1]}, ${color[2]}): ${percentage.toFixed(2)}%
-                    </div>`;
     }
+
+    scoresHTML += `<div style="color: ${colorCSS}; ${color[0] === DRAW_COLOR[0] && color[1] === DRAW_COLOR[1] && color[2] === DRAW_COLOR[2] ? 'font-weight: bold;' : ''} margin-bottom: 5px;">
+                    ${playerName}: ${percentage.toFixed(2)}%
+                  </div>`;
   }
 
   playerScoresElement.innerHTML = scoresHTML;

@@ -1,9 +1,8 @@
 # TO DO
-1. Check multiplayer dynamics and score counting
-2. Finalize traditional and naive approaches and presentation
-3. Check with DL course rubric
-4. Update gameplay snippet and video walkthrough in README
-5. Assets are not showing up in the deployed version
-6. Add a "gift" symbol which can be anything
-7. Add a scrolling window coz UI is optimized for 16inch laptop
-8. display username instead of player color in score board
+
+monday
+1. Finalize traditional and naive approaches and presentation
+2. Check with DL course rubric
+3. Update gameplay snippet and video walkthrough in README
+4. make submission video
+5. ensure to increase time limit to 40 secs
