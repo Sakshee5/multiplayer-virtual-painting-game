@@ -5,3 +5,5 @@
 4. Update gameplay snippet and video walkthrough in README
 5. Assets are not showing up in the deployed version
 6. Add a "gift" symbol which can be anything
+7. Add a scrolling window coz UI is optimized for 16inch laptop
+8. display username instead of player color in score board

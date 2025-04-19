@@ -520,18 +520,6 @@ function updateScores() {
 
     const colorCSS = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
 
-    // Find the username for this color
-    let username = "Player";
-    for (const [client, info] of Object.entries(connected_clients)) {
-      if (info.color && 
-          info.color[0] === color[0] && 
-          info.color[1] === color[1] && 
-          info.color[2] === color[2]) {
-        username = info.username || "Player";
-        break;
-      }
-    }
-
     if (color[0] === DRAW_COLOR[0] && color[1] === DRAW_COLOR[1] && color[2] === DRAW_COLOR[2]) {
       scoresHTML += `<div style="color: ${colorCSS}; font-weight: bold; margin-bottom: 5px;">
                       YOU: ${percentage.toFixed(2)}%
@@ -541,7 +529,7 @@ function updateScores() {
       continue;
     } else {
       scoresHTML += `<div style="color: ${colorCSS}; margin-bottom: 5px;">
-                      ${username}: ${percentage.toFixed(2)}%
+                      (${color[0]}, ${color[1]}, ${color[2]}): ${percentage.toFixed(2)}%
                     </div>`;
     }
   }
