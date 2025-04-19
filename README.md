@@ -90,12 +90,13 @@ Access the game at `https://vcm-47044.vm.duke.edu/`
 - Synchronized canvas updates across clients
 - Brush thickness and color management
 
-## Power-Ups
-### Available Power-Ups
+## Power-Ups and Downs
+### Available Power-Ups and Downs 
 1. <img src="server/assets/eraser.png" alt="Eraser Power-up" width="20"> **Eraser**: Temporarily (5 secs) allows erasing opponent drawings
-2. <img src="server/assets/devil_face.png" alt="Devil Face Power-up" width="20"> **Devil Face**: Reduces opponent's brush size for 5 seconds
+2. <img src="server/assets/devil_face.png" alt="Devil Face Power-down" width="20"> **Devil Face**: Reduces opponent's brush size for 5 seconds
 3. <img src="server/assets/paint_bucket.png" alt="Paint Bucket Power-up" width="20"> **Paint Bucket**: Fills a random area with player's color
 4. <img src="server/assets/paint_brush.png" alt="Paint Brush Power-up" width="20"> **Paint Brush**: Temporarily increases brush size
+5. <img src="server/assets/surprise.png>" alt="Surprise Power-up/down" width="20"> **Surprise**: Can turn out to be any of the above 4
 
 ### Power-Up Mechanics
 - Random spawning every 10-15 seconds

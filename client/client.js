@@ -423,6 +423,24 @@ function connectWebSocket() {
                 if (powerUpType === "devil_face") {
                   applyDevilFace();
                 }
+
+                // Add surprise power-up handling
+                if (powerUpType === "surprise") {
+                  // Randomly select one of the other power-ups
+                  const powerUps = ["paint_bucket", "paint_brush", "eraser", "devil_face"];
+                  const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
+                  
+                  // Apply the randomly selected power-up
+                  if (randomPowerUp === "paint_bucket") {
+                    applyPaintBucket();
+                  } else if (randomPowerUp === "paint_brush") {
+                    applyPaintBrush();
+                  } else if (randomPowerUp === "eraser") {
+                    applyEraser();
+                  } else if (randomPowerUp === "devil_face") {
+                    applyDevilFace();
+                  }
+                }
               }
 
               break;

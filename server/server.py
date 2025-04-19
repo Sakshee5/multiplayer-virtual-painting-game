@@ -9,7 +9,7 @@ from aiohttp import web, WSMsgType
 # Global variables
 connected_clients = {}  # {websocket: {"color": color, "username": username}}
 connected_clients = {}  # {websocket: {"color": color, "username": username}}
-draw_colors = [(0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
+draw_colors = [(0, 255, 0), (0, 207, 255), (240, 255, 0), (255, 0, 0), (255, 0, 255)]
 color_pixel_perc = {str(color): 0 for color in draw_colors}
 img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Initialize the shared canvas
 game_duration = 20
@@ -29,7 +29,8 @@ POWER_UPS = [
     {"type": "eraser", "image": "/assets/eraser.png", "id": None},
     {"type": "devil_face", "image": "/assets/devil_face.png", "id": None},
     {"type": "paint_bucket", "image": "/assets/paint_bucket.png", "id": None},
-    {"type": "paint_brush", "image": "/assets/paint_brush.png", "id": None}
+    {"type": "paint_brush", "image": "/assets/paint_brush.png", "id": None},
+    {"type": "surprise", "image": "/assets/surprise.png", "id": None}
 ]
 
 async def spawn_power_ups():
@@ -40,6 +41,19 @@ async def spawn_power_ups():
     while game_active:
         power_up_id = generate_power_up_id()
         power_up = random.choice(POWER_UPS)
+        
+        # If it's a surprise power-up, randomly select one of the other power-ups
+        if power_up["type"] == "surprise":
+            # Exclude the surprise power-up itself from the random selection
+            available_power_ups = [p for p in POWER_UPS if p["type"] != "surprise"]
+            actual_power_up = random.choice(available_power_ups)
+            # Create a copy with the surprise image but the actual power-up type
+            power_up = {
+                "type": actual_power_up["type"],
+                "image": power_up["image"],  # Use surprise image
+                "id": None
+            }
+        
         x = random.randint(50, 1210)  # Random x-coordinate
         y = random.randint(50, 450)   # Random y-coordinate
         

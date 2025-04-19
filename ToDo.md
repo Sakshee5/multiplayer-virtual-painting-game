@@ -6,5 +6,6 @@ monday
 3. Update gameplay snippet and video walkthrough in README
 
 
-5. Assets are not showing up in the deployed version
+5. set better colors (brighter)
 6. Add a "gift" symbol which can be anything
+7. figure out `not secure`
