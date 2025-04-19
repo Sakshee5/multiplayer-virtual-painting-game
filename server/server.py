@@ -8,6 +8,7 @@ from aiohttp import web, WSMsgType
 
 # Global variables
 connected_clients = {}  # {websocket: {"color": color, "username": username}}
+connected_clients = {}  # {websocket: {"color": color, "username": username}}
 draw_colors = [(0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
 color_pixel_perc = {str(color): 0 for color in draw_colors}
 img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Initialize the shared canvas
@@ -41,7 +42,15 @@ async def spawn_power_ups():
         power_up = random.choice(POWER_UPS)
         x = random.randint(50, 1210)  # Random x-coordinate
         y = random.randint(50, 450)   # Random y-coordinate
-        active_power_up = {"type": power_up["type"], "x": x, "y": y, "image": power_up["image"], "id": power_up_id}
+        
+        # Create a copy of the power-up with the full URL
+        active_power_up = {
+            "type": power_up["type"],
+            "x": x,
+            "y": y,
+            "image": power_up["image"],  # Keep the relative path
+            "id": power_up_id
+        }
 
         # Broadcast the new power-up to all clients
         async with connected_clients_lock:
@@ -321,6 +330,17 @@ async def main():
     app.router.add_get('/ws', websocket_handler)
     app.router.add_static('/assets', './assets')  # Serve assets directory
     app.router.add_static('/', '.', show_index=True)
+    
+    # Add middleware to set proper headers
+    @web.middleware
+    async def cors_middleware(request, handler):
+        response = await handler(request)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = '*'
+        return response
+    
+    app.middlewares.append(cors_middleware)
 
     port = int(os.environ.get("PORT", 5000))  # Changed default port to 5000
 
