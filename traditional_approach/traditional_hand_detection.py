@@ -9,6 +9,9 @@ import traceback
 import mediapipe as mp
 
 class SimpleHandDetector:
+    """
+    Simple hand detection class using MediaPipe.
+    """
     def __init__(self):
         # MediaPipe hand detection (only used for training data collection)
         self.mp_hands = mp.solutions.hands
@@ -236,6 +239,9 @@ class SimpleHandDetector:
             return None
         
     def collect_training_data(self, num_samples=2000): 
+        """
+        Collects training data for hand detection. Ensure to not have random "skin" colored objects in the frame as it will be classified as skin.
+        """
         # Remove instruction frame as requested
         print("Starting data collection...")
         cap = cv2.VideoCapture(0)
@@ -344,6 +350,9 @@ class SimpleHandDetector:
             return None, None, None
             
     def train(self, features, landmarks, no_hand_features):
+        """
+        Trains the hand detection models.
+        """
         print("Training improved models with validation...")
         
         # Combine positive and negative samples for hand detection
@@ -457,6 +466,9 @@ class SimpleHandDetector:
         
     # Save the scaler too
     def save_models(self, filepath='hand_models.pkl'):
+        """
+        Saves the trained models to a file.
+        """
         with open(filepath, 'wb') as f:
             model_package = {
                 'landmark_models': self.models,
@@ -467,6 +479,9 @@ class SimpleHandDetector:
         print(f"Models saved to {filepath}")
             
     def predict(self, frame):
+        """
+        Predicts the hand landmarks and confidence score.
+        """
         try:
             # Get the visualization mask
             _, _, _, vis_mask = self.preprocess_frame(frame)
@@ -601,6 +616,9 @@ class SimpleHandDetector:
         
 
 def main():
+    """
+    Main function to train and test the hand detection models.
+    """
     try:
         detector = SimpleHandDetector()
         model_path = 'hand_models.pkl'

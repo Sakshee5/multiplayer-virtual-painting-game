@@ -123,6 +123,68 @@ This project adheres to the following ethical principles:
    - Transparent scoring system
    - Random power-up distribution
 
+## Hand Detection Approaches
+
+### Traditional Approach (traditional_hand_detection.py)
+The traditional approach implements a hand detection system using a combination of computer vision techniques and machine learning.
+
+1. **Preprocessing Pipeline**:
+   - Converts frames to multiple color spaces (HSV, YCrCb) for skin detection
+   - Uses refined HSV thresholds for skin segmentation (The values have been set as per the repo owners skin color)
+   - Applies morphological operations to clean up detection
+   - Implements contour analysis with area and aspect ratio filtering
+   - Adds padding and bounds checking for better hand region extraction
+
+2. **Feature Extraction**:
+   - Uses Histogram of Oriented Gradients (HOG) at multiple scales
+   - Implements color histograms focusing on hue and saturation
+   - Calculates gradient magnitude and direction features
+   - Extracts shape context features from hand contours
+   - Normalizes features for consistent model input
+
+3. **Machine Learning Components**:
+   - Uses XGBoost/GradientBoosting for both classification and regression
+   - Implements a two-stage detection system:
+     - Hand presence classifier
+     - Landmark position regressors
+   - Includes validation sets for model training
+   - Applies feature scaling and standardization
+
+4. **Prediction Pipeline**:
+   - Real-time hand detection with confidence scoring
+   - Smoothing algorithms to reduce jitter
+   - Trajectory tracking for stable predictions
+   - Visualization of detection results
+   - Error handling and fallback mechanisms
+
+### Naive Approach (naive_hand_detection.py)
+The naive approach uses simpler computer vision techniques for hand detection:
+
+1. **Color-Based Detection**:
+   - Uses HSV color space for skin detection
+   - Defines fixed ranges for skin color (lower_skin, upper_skin)
+   - Applies basic morphological operations for noise reduction
+   - Uses Gaussian blur for smoothing
+
+2. **Contour Analysis**:
+   - Finds the largest contour in the skin mask
+   - Implements area thresholding to filter noise
+   - Uses convex hull and convexity defects for finger detection
+   - Calculates angles between fingers for counting
+
+3. **Visualization**:
+   - Draws hand contours and convex hull
+   - Marks finger positions with circles
+   - Displays finger count on screen
+   - Shows binary mask for debugging
+
+4. **Limitations**:
+   - Less accurate in varying lighting conditions
+   - May struggle with complex hand poses
+   - More susceptible to false positives
+   - Limited to basic hand detection
+   - No confidence scoring
+
 
 ## Future Enhancements
 - Improve hand-tracking accuracy for complex gestures

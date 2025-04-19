@@ -7,7 +7,7 @@ import os
 from aiohttp import web, WSMsgType
 
 # Global variables
-connected_clients = {}  # Now will store {websocket: {"color": color, "username": username}}
+connected_clients = {}  # {websocket: {"color": color, "username": username}}
 draw_colors = [(0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
 color_pixel_perc = {str(color): 0 for color in draw_colors}
 img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Initialize the shared canvas
@@ -20,14 +20,15 @@ countdown_lock = asyncio.Lock()  # Lock for countdown synchronization
 power_up_counter = itertools.count(start=1)  # Creates an incremental counter
 
 def generate_power_up_id():
+    """Generates a unique power-up ID"""
     return next(power_up_counter) * 100 + random.randint(0, 99)  # Ensures uniqueness with a mix of incremental and random values
 
 # Constants for power-ups
 POWER_UPS = [
-    {"type": "eraser", "image": "assets/eraser.png", "id": None},
-    {"type": "devil_face", "image": "assets/devil_face.png", "id": None},
-    {"type": "paint_bucket", "image": "assets/paint_bucket.png", "id": None},
-    {"type": "paint_brush", "image": "assets/paint_brush.png", "id": None}
+    {"type": "eraser", "image": "/assets/eraser.png", "id": None},
+    {"type": "devil_face", "image": "/assets/devil_face.png", "id": None},
+    {"type": "paint_bucket", "image": "/assets/paint_bucket.png", "id": None},
+    {"type": "paint_brush", "image": "/assets/paint_brush.png", "id": None}
 ]
 
 async def spawn_power_ups():
@@ -56,6 +57,7 @@ async def spawn_power_ups():
         await asyncio.sleep(random.randint(10, 15))  # Spawn every 10-20 seconds
 
 async def handle_countdown():
+    """Function to handle the game countdown"""
     global color_pixel_perc, img_canvas, game_active, countdown_active
 
     # Use the countdown lock to prevent multiple countdowns
@@ -172,6 +174,7 @@ async def game_timer():
         print("No winner determined.")
 
 async def broadcast_client_list():
+    """Function to broadcast the client list to all clients for visibility in who is connected"""
     async with connected_clients_lock:
         client_list = {}
         for i, (client, client_info) in enumerate(connected_clients.items()):
@@ -201,6 +204,9 @@ async def remove_client(client):
         del connected_clients[client]
 
 async def websocket_handler(request):
+    """
+    Handles WebSocket connections from clients.
+    """
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
@@ -301,12 +307,19 @@ async def websocket_handler(request):
     return ws
 
 async def index_handler(request):
+    """
+    Handles the index.html file for the client.
+    """
     return web.FileResponse('../client/index.html')
 
 async def main():
+    """
+    Main function to start the server.
+    """
     app = web.Application()
     app.router.add_get('/', index_handler)
     app.router.add_get('/ws', websocket_handler)
+    app.router.add_static('/assets', './assets')  # Serve assets directory
     app.router.add_static('/', '.', show_index=True)
 
     port = int(os.environ.get("PORT", 5000))  # Changed default port to 5000
