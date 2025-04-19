@@ -472,18 +472,46 @@ function updatePowerUpDisplay() {
       powerUpElement.style.left = `${powerUp.x}px`;
       powerUpElement.style.top = `${powerUp.y}px`;
 
-      // Instead of text, create an image element
+      // Create image element
       const img = document.createElement('img');
-      // Ensure the image path is correct relative to your HTML file.
-      img.src = powerUp.image; // e.g., "eraser.png", "devil_face.png", etc.
-      img.style.width = '30px';  // Adjust size as needed
+      
+      // Construct the full URL for the image
+      const imageUrl = new URL(powerUp.image, window.location.origin);
+      console.log('Loading power-up image:', imageUrl.toString());
+      
+      img.src = imageUrl.toString();
+      img.style.width = '30px';
       img.style.height = '30px';
+      img.alt = powerUp.type;
+      
+      // Add comprehensive error handling
+      img.onerror = function(e) {
+        console.error('Failed to load power-up image:', {
+          url: imageUrl.toString(),
+          error: e,
+          powerUp: powerUp
+        });
+        // Add a fallback visual indicator
+        powerUpElement.style.backgroundColor = 'rgba(255, 0, 0, 0.5)';
+        powerUpElement.style.border = '2px solid red';
+        powerUpElement.style.borderRadius = '15px';
+        const fallbackText = document.createElement('div');
+        fallbackText.textContent = powerUp.type;
+        fallbackText.style.color = 'white';
+        fallbackText.style.textAlign = 'center';
+        fallbackText.style.lineHeight = '30px';
+        powerUpElement.appendChild(fallbackText);
+      };
 
-      // Append the image to the power-up element
+      // Add load success handler for debugging
+      img.onload = function() {
+        console.log('Successfully loaded power-up image:', imageUrl.toString());
+      };
+
       powerUpElement.appendChild(img);
       powerUpsContainer.appendChild(powerUpElement);
     });
-  }
+}
 
 // Function to clear the drawing canvas
 function clearDrawingCanvas() {
@@ -519,6 +547,18 @@ function updateScores() {
 
     const colorCSS = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
 
+    // Find the username for this color
+    let username = "Player";
+    for (const [client, info] of Object.entries(connected_clients)) {
+      if (info.color && 
+          info.color[0] === color[0] && 
+          info.color[1] === color[1] && 
+          info.color[2] === color[2]) {
+        username = info.username || "Player";
+        break;
+      }
+    }
+
     if (color[0] === DRAW_COLOR[0] && color[1] === DRAW_COLOR[1] && color[2] === DRAW_COLOR[2]) {
       scoresHTML += `<div style="color: ${colorCSS}; font-weight: bold; margin-bottom: 5px;">
                       YOU: ${percentage.toFixed(2)}%
@@ -528,7 +568,7 @@ function updateScores() {
       continue;
     } else {
       scoresHTML += `<div style="color: ${colorCSS}; margin-bottom: 5px;">
-                      Player (${color[0]}, ${color[1]}, ${color[2]}): ${percentage.toFixed(2)}%
+                      ${username}: ${percentage.toFixed(2)}%
                     </div>`;
     }
   }

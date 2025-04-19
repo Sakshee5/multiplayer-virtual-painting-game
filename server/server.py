@@ -41,7 +41,15 @@ async def spawn_power_ups():
         power_up = random.choice(POWER_UPS)
         x = random.randint(50, 1210)  # Random x-coordinate
         y = random.randint(50, 450)   # Random y-coordinate
-        active_power_up = {"type": power_up["type"], "x": x, "y": y, "image": power_up["image"], "id": power_up_id}
+        
+        # Create a copy of the power-up with the full URL
+        active_power_up = {
+            "type": power_up["type"],
+            "x": x,
+            "y": y,
+            "image": power_up["image"],  # Keep the relative path
+            "id": power_up_id
+        }
 
         # Broadcast the new power-up to all clients
         async with connected_clients_lock:
@@ -319,8 +327,27 @@ async def main():
     app = web.Application()
     app.router.add_get('/', index_handler)
     app.router.add_get('/ws', websocket_handler)
-    app.router.add_static('/assets', './assets')  # Serve assets directory
+    
+    # Configure static file serving with proper MIME types
+    app.router.add_static('/assets', './assets', 
+        show_index=True,
+        append_version=True,  # Add version to prevent caching issues
+        follow_symlinks=True
+    )
+    
+    # Add MIME type overrides for images
     app.router.add_static('/', '.', show_index=True)
+    
+    # Add middleware to set proper headers
+    @web.middleware
+    async def cors_middleware(request, handler):
+        response = await handler(request)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = '*'
+        return response
+    
+    app.middlewares.append(cors_middleware)
 
     port = int(os.environ.get("PORT", 5000))  # Changed default port to 5000
 
