@@ -498,11 +498,10 @@ function updatePowerUpDisplay() {
     powerUpElement.style.left = `${powerUp.x}px`;
     powerUpElement.style.top = `${powerUp.y}px`;
 
-    
-    // Instead of text, create an image element
+    // Create an image element
     const img = document.createElement('img');
-    // Fix the image path by ensuring it uses the correct base URL
-    img.src = window.location.origin + powerUp.image;
+    // Use URL constructor to properly resolve the path
+    img.src = new URL(powerUp.image, window.location.origin).href;
     img.style.width = '30px';  // Adjust size as needed
     img.style.height = '30px';
 
