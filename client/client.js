@@ -782,7 +782,7 @@ function drawPaintBucket(x, y, color) {
 
 // Apply paint brush power-up effect
 function applyPaintBrush() {
-  brushThickness = 60; // Larger brush
+  brushThickness = 70; // Larger brush
 
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
@@ -794,7 +794,7 @@ function applyPaintBrush() {
 function applyEraser() {
   // Enable erasing mode
   isErasing = true;
-  brushThickness = 45; // Larger brush for erasing
+  brushThickness = 50; // Larger brush for erasing
 
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
