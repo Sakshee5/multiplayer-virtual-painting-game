@@ -12,7 +12,7 @@ connected_clients = {}  # {websocket: {"color": color, "username": username}}
 draw_colors = [(0, 255, 0), (0, 207, 255), (240, 255, 0), (255, 0, 0), (255, 0, 255)]
 color_pixel_perc = {str(color): 0 for color in draw_colors}
 img_canvas = np.zeros((500, 1260, 3), dtype=np.uint8)  # Initialize the shared canvas
-game_duration = 20
+game_duration = 40
 game_active = False  # To track whether the game is active
 countdown_active = False  # To prevent multiple countdowns
 connected_clients_lock = asyncio.Lock()  # To manage client connections safely

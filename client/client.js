@@ -69,7 +69,7 @@ let DRAW_COLOR_TEMP = null; // Temporary color for power-ups
 // Drawing variables
 let xp = 0;
 let yp = 0;
-let brushThickness = 25;
+let brushThickness = 35;
 let isDrawing = false;
 let isErasing = false;
 
@@ -285,7 +285,7 @@ function connectWebSocket() {
         // Reset all power-up effects
         isErasing = false;
         DRAW_COLOR_TEMP = null;
-        brushThickness = 25;
+        brushThickness = 35;
 
         // Clear all power-ups
         powerUpsAvailable = [];
@@ -317,7 +317,7 @@ function connectWebSocket() {
         // Reset all power-up effects
         isErasing = false;
         DRAW_COLOR_TEMP = null;
-        brushThickness = 25;
+        brushThickness = 35;
 
         // Clear power-ups
         powerUpsAvailable = [];
@@ -786,7 +786,7 @@ function applyPaintBrush() {
 
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
-    brushThickness = 25;
+    brushThickness = 35;
   }, 5000);
 }
 
@@ -794,12 +794,12 @@ function applyPaintBrush() {
 function applyEraser() {
   // Enable erasing mode
   isErasing = true;
-  brushThickness = 40; // Larger brush for erasing
+  brushThickness = 45; // Larger brush for erasing
 
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
     isErasing = false;
-    brushThickness = 25;
+    brushThickness = 35;
   }, 5000);
 }
 
@@ -809,7 +809,7 @@ function applyDevilFace() {
 
   // Reset to normal brush after 5 seconds
   setTimeout(() => {
-    brushThickness = 25;
+    brushThickness = 35;
   }, 5000);
 }
 
