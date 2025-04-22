@@ -3,7 +3,10 @@
 Splashh is a **Multiplayer Drawing Game** with real-time interactions powered by WebSockets, MediaPipe Hands, and JavaScript. Players can join a game, use hand gestures to draw on a shared canvas, and compete to fill the most canvas area while utilizing various power-ups.
 
 Gameplay Snippet
-![Gameplay Snippet](client/assets/video_snippet.gif)
+<p align="center">
+  <img src="client/assets/video_snippet.gif" alt="Gameplay Snippet" style="width:100%; height:auto;" />
+</p>
+
 
 [Complete Video Walkthrough](https://youtu.be/vPPS1YDccx0)
 
