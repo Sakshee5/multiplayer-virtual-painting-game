@@ -256,6 +256,14 @@ class SimpleHandDetector:
         no_hand_count = 0
         target_no_hand = num_samples // 5
         
+        # Data quality metrics
+        quality_metrics = {
+            'total_frames': 0,
+            'valid_hand_frames': 0,
+            'valid_no_hand_frames': 0,
+            'skipped_frames': 0
+        }
+        
         while count < num_samples or no_hand_count < target_no_hand:
             try:
                 ret, frame = cap.read()
@@ -264,6 +272,7 @@ class SimpleHandDetector:
                     time.sleep(0.1)
                     continue
                 
+                quality_metrics['total_frames'] += 1
                 frame = cv2.flip(frame, 1)
                 
                 # Show skin detection visualization
@@ -282,6 +291,7 @@ class SimpleHandDetector:
                 
                 features = self.extract_features(frame)
                 if features is None:
+                    quality_metrics['skipped_frames'] += 1
                     continue
                 
                 # Add status indicators directly on main window
@@ -289,13 +299,20 @@ class SimpleHandDetector:
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 cv2.putText(frame, f'No-hand samples: {no_hand_count}/{target_no_hand}', 
                         (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                cv2.putText(frame, "Press 'q' to stop collection", 
+                cv2.putText(frame, f'Quality: {quality_metrics["valid_hand_frames"]}/{quality_metrics["total_frames"]}', 
                         (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(frame, "Press 'q' to stop collection", 
+                        (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
                 
                 if results.multi_hand_landmarks and count < num_samples:
                     # Get fingertip landmarks with improved normalization
                     landmarks = []
                     hand_landmarks = results.multi_hand_landmarks[0]
+                    
+                    # Validate hand landmarks
+                    if not self._validate_landmarks(hand_landmarks):
+                        quality_metrics['skipped_frames'] += 1
+                        continue
                     
                     # Calculate hand center and size for normalization
                     all_x = [lm.x for lm in hand_landmarks.landmark]
@@ -317,6 +334,7 @@ class SimpleHandDetector:
                     features_list.append(features)
                     landmarks_list.append(landmarks)
                     count += 1
+                    quality_metrics['valid_hand_frames'] += 1
                     
                     # Visualization
                     h, w, _ = frame.shape
@@ -326,8 +344,13 @@ class SimpleHandDetector:
                         cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
                     
                 elif not results.multi_hand_landmarks and count >= num_samples and no_hand_count < target_no_hand:
-                    no_hand_features.append(features)
-                    no_hand_count += 1
+                    # Validate no-hand frame
+                    if self._validate_no_hand_frame(frame):
+                        no_hand_features.append(features)
+                        no_hand_count += 1
+                        quality_metrics['valid_no_hand_frames'] += 1
+                    else:
+                        quality_metrics['skipped_frames'] += 1
                 
                 cv2.imshow('Collecting Training Data', frame)
                 
@@ -341,20 +364,94 @@ class SimpleHandDetector:
         cap.release()
         cv2.destroyAllWindows()
         
+        # Print data collection summary
+        print("\nData Collection Summary:")
+        print(f"Total frames processed: {quality_metrics['total_frames']}")
+        print(f"Valid hand frames: {quality_metrics['valid_hand_frames']}")
+        print(f"Valid no-hand frames: {quality_metrics['valid_no_hand_frames']}")
+        print(f"Skipped frames: {quality_metrics['skipped_frames']}")
+        print(f"Collection success rate: {(quality_metrics['valid_hand_frames'] + quality_metrics['valid_no_hand_frames']) / quality_metrics['total_frames']:.2%}")
+        
         if count > 0:
-            print(f"Collected {count} hand samples and {no_hand_count} no-hand samples successfully!")
+            print(f"\nCollected {count} hand samples and {no_hand_count} no-hand samples successfully!")
             return (np.array(features_list), np.array(landmarks_list), 
                 np.array(no_hand_features))
         else:
             print("No samples collected!")
             return None, None, None
             
+    def _validate_landmarks(self, hand_landmarks):
+        """Validates hand landmarks for quality."""
+        try:
+            # Check if all required landmarks are present
+            if not all(hasattr(hand_landmarks.landmark[i], 'x') for i in self.target_indices):
+                return False
+                
+            # Check for reasonable landmark positions
+            for idx in self.target_indices:
+                lm = hand_landmarks.landmark[idx]
+                if not (0 <= lm.x <= 1 and 0 <= lm.y <= 1):
+                    return False
+                    
+            # Check for reasonable hand size
+            wrist = hand_landmarks.landmark[0]
+            middle_mcp = hand_landmarks.landmark[9]
+            hand_size = np.sqrt((middle_mcp.x - wrist.x)**2 + (middle_mcp.y - wrist.y)**2)
+            if hand_size < 0.1 or hand_size > 0.5:  # Arbitrary thresholds
+                return False
+                
+            return True
+        except:
+            return False
+            
+    def _validate_no_hand_frame(self, frame):
+        """Validates no-hand frames for quality."""
+        try:
+            # Check for reasonable skin detection
+            _, hand_mask, _, _ = self.preprocess_frame(frame)
+            if hand_mask is None:
+                return True
+                
+            # Check if any significant skin regions are detected
+            skin_pixels = np.sum(hand_mask > 0)
+            if skin_pixels > frame.shape[0] * frame.shape[1] * 0.1:  # More than 10% skin
+                return False
+                
+            return True
+        except:
+            return False
+            
+    def load_models(self, filepath='hand_models.pkl'):
+        """
+        Loads the trained models from a file.
+        """
+        try:
+            with open(filepath, 'rb') as f:
+                model_package = pickle.load(f)
+                self.models = model_package['landmark_models']
+                self.hand_present_classifier = model_package['hand_classifier']
+                self.feature_scaler = model_package['feature_scaler']
+            print(f"Models loaded successfully from {filepath}")
+            return True
+        except Exception as e:
+            print(f"Error loading models: {str(e)}")
+            return False
+            
     def train(self, features, landmarks, no_hand_features):
         """
-        Trains the hand detection models.
+        Trains the hand detection models with enhanced validation and cross-validation.
         """
-        print("Training improved models with validation...")
+        print("Training improved models with validation and evaluation...")
         
+        # Data validation
+        if features is None or landmarks is None or no_hand_features is None:
+            print("Error: Invalid training data")
+            return
+            
+        if len(features) == 0 or len(landmarks) == 0 or len(no_hand_features) == 0:
+            print("Error: Empty training data")
+            return
+            
         # Combine positive and negative samples for hand detection
         X_hand_detection = np.vstack([features, no_hand_features])
         y_hand_detection = np.hstack([
@@ -396,17 +493,29 @@ class SimpleHandDetector:
                 verbose=1
             )
         
-        print("Training hand detector...")
+        print("\nTraining hand detector...")
         # For XGBoost, provide validation set for early stopping
         if isinstance(self.hand_present_classifier, xgb.XGBClassifier):
             eval_set = [(X_val, y_val)]
             self.hand_present_classifier.fit(X_train, y_train, eval_set=eval_set)
+            # Get training history
+            results = self.hand_present_classifier.evals_result()
+            print("\nHand Detection Training History:")
+            print("Training AUC:", results['validation_0']['auc'][-1])
         else:
             self.hand_present_classifier.fit(X_train, y_train)
         
         # Evaluate hand detector
-        val_score = self.hand_present_classifier.score(X_val, y_val)
-        print(f"Hand detector validation accuracy: {val_score:.3f}")
+        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+        y_pred = self.hand_present_classifier.predict(X_val)
+        y_pred_proba = self.hand_present_classifier.predict_proba(X_val)[:, 1]
+        
+        print("\nHand Detection Evaluation Metrics:")
+        print(f"Accuracy: {accuracy_score(y_val, y_pred):.3f}")
+        print(f"Precision: {precision_score(y_val, y_pred):.3f}")
+        print(f"Recall: {recall_score(y_val, y_pred):.3f}")
+        print(f"F1 Score: {f1_score(y_val, y_pred):.3f}")
+        print(f"AUC Score: {roc_auc_score(y_val, y_pred_proba):.3f}")
         
         # Try to use standardized features for landmark prediction
         from sklearn.preprocessing import StandardScaler
@@ -421,8 +530,11 @@ class SimpleHandDetector:
             X_train_scaled, landmarks, test_size=0.2, random_state=42
         )
         
+        print("\nTraining Landmark Predictors:")
+        landmark_metrics = []
+        
         for i in range(landmarks.shape[1]):
-            print(f"Training landmark {i}...")
+            print(f"\nTraining landmark {i}...")
             try:
                 import xgboost as xgb
                 model = xgb.XGBRegressor(
@@ -451,18 +563,41 @@ class SimpleHandDetector:
             if isinstance(model, xgb.XGBRegressor):
                 eval_set = [(X_val, y_val[:, i])]
                 model.fit(X_train, y_train[:, i], eval_set=eval_set)
+                # Get training history
+                results = model.evals_result()
+                print(f"Training RMSE: {results['validation_0']['rmse'][-1]:.3f}")
             else:
                 model.fit(X_train, y_train[:, i])
             
             # Evaluate each landmark predictor
-            val_score = model.score(X_val, y_val[:, i])
-            print(f"Landmark {i} R² score: {val_score:.3f}")
+            from sklearn.metrics import mean_squared_error, r2_score
+            y_pred = model.predict(X_val)
+            mse = mean_squared_error(y_val[:, i], y_pred)
+            r2 = r2_score(y_val[:, i], y_pred)
+            
+            print(f"Landmark {i} Metrics:")
+            print(f"R² Score: {r2:.3f}")
+            print(f"RMSE: {np.sqrt(mse):.3f}")
+            
+            landmark_metrics.append({
+                'landmark': i,
+                'r2': r2,
+                'rmse': np.sqrt(mse)
+            })
             
             self.models.append(model)
         
         # Save the scaler for future use
         self.feature_scaler = scaler
-        print("Training complete!")
+        
+        # Print summary of landmark prediction performance
+        print("\nLandmark Prediction Summary:")
+        avg_r2 = np.mean([m['r2'] for m in landmark_metrics])
+        avg_rmse = np.mean([m['rmse'] for m in landmark_metrics])
+        print(f"Average R² Score: {avg_r2:.3f}")
+        print(f"Average RMSE: {avg_rmse:.3f}")
+        
+        print("\nTraining complete!")
         
     # Save the scaler too
     def save_models(self, filepath='hand_models.pkl'):
@@ -558,7 +693,7 @@ class SimpleHandDetector:
                     # Draw both current position and prediction trajectory
                     if 0 <= x < width and 0 <= y < height:
                         # Draw point
-                        cv2.circle(frame, (x, y), 8, (0, 255, 0), -1)
+                        cv2.circle(frame, (x, y+120), 8, (0, 255, 0), -1)
                         
                         # Draw trajectory/history if we have previous points
                         if hasattr(self, 'point_history'):
@@ -575,7 +710,7 @@ class SimpleHandDetector:
                         else:
                             self.point_history = [(x, y)]
                         
-                        cv2.putText(frame, "Index", (x + 10, y), 
+                        cv2.putText(frame, "Index", (x + 10, y+120), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     else:
                         if hasattr(self, 'point_history'):
@@ -621,7 +756,7 @@ def main():
     """
     try:
         detector = SimpleHandDetector()
-        model_path = 'hand_models.pkl'
+        model_path = 'traditional_approach/hand_models.pkl'
         
         if os.path.exists(model_path):
             print("Loading existing models...")

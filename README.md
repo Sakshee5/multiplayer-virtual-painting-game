@@ -3,9 +3,9 @@
 Splashh is a **Multiplayer Drawing Game** with real-time interactions powered by WebSockets, MediaPipe Hands, and JavaScript. Players can join a game, use hand gestures to draw on a shared canvas, and compete to fill the most canvas area while utilizing various power-ups.
 
 Gameplay Snippet
-![Gameplay Snippet - Old version](client/assets/video_snippet.gif)
+![Gameplay Snippet](client/assets/video_snippet.gif)
 
-[Complete Video Walkthrough - Old version](https://youtu.be/SlA19znMufY?si=TuDvYnA9aIcu4sZw)
+[Complete Video Walkthrough](https://youtu.be/vPPS1YDccx0)
 
 ## Features
 - **Real-Time Multiplayer Drawing**: Players can draw on a shared canvas using MediaPipe Hands for gesture tracking
@@ -96,7 +96,7 @@ Access the game at `https://vcm-47044.vm.duke.edu/`
 2. <img src="server/assets/devil_face.png" alt="Devil Face Power-down" width="20"> **Devil Face**: Reduces opponent's brush size for 5 seconds
 3. <img src="server/assets/paint_bucket.png" alt="Paint Bucket Power-up" width="20"> **Paint Bucket**: Fills a random area with player's color
 4. <img src="server/assets/paint_brush.png" alt="Paint Brush Power-up" width="20"> **Paint Brush**: Temporarily increases brush size
-5. <img src="server/assets/surprise.png>" alt="Surprise Power-up/down" width="20"> **Surprise**: Can turn out to be any of the above 4
+4. <img src="server/assets/surprise.png" alt="Paint Brush Power-up" width="20"> **Surprise**: Can turn out to be any of the above 4
 
 ### Power-Up Mechanics
 - Random spawning every 10-15 seconds

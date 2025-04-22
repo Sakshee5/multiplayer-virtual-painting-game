@@ -77,7 +77,7 @@ async def spawn_power_ups():
                 except Exception:
                     await remove_client(client)
 
-        await asyncio.sleep(random.randint(10, 15))  # Spawn every 10-20 seconds
+        await asyncio.sleep(random.randint(7, 12))  # Spawn every 7-12 seconds
 
 async def handle_countdown():
     """Function to handle the game countdown"""
